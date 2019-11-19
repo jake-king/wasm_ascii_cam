@@ -1,0 +1,19 @@
+body{
+    background: black;
+}
+
+#video{
+    display: none;
+}
+
+#canvas{
+    display: none;
+}
+
+#ascii-cam{
+    background: black;
+    display: inline-block;
+    font-family: monospace;
+    font-size: 0.5vw;
+    max-width: 100%;
+}
