@@ -1,30 +1,50 @@
+const ASCII_PALETTE = ['.', '\'', '`', '^', '"', ':', ';', 'I', 
+'l', '!', 'i', '>', '<', '~', '+', '-', '?', ']', '[', '}', '{', 
+'1', ')', '(', '|', '\\', '/', 't', 'f', 'r', 'x', 'n', 'u', 'v', 
+'c', 'z', 'X', 'Y', 'U', 'J', 'C', 'L', 'Q', '0', 'O', 'Z', 'm', 
+'w', 'd', 'b', 'k', 'h', 'a', 'o', '*', '#', 'M', 'W', '&', '8', 
+'%', 'B', '@', '$'];
+
 const width = 40;
 const height = 30;
 
-let video = null;
-let canvas = null;
-let ctx = null;
-const totalThreads = width * height;
+const video = document.getElementById('video');
+const videoCanvas = document.getElementById('canvas');
+let asciiCanvas = document.getElementById('ascii-cam');
+let vidCtx = videoCanvas.getContext("2d");
+let ctx = asciiCanvas.getContext("2d");
+ctx.imageSmoothingEnabled = false;
+ctx.font = "normal 14px Courier";
+
+const fontWidth =  ctx.measureText('M').width;
+const lineHeight = 16;
+asciiCanvas.width = (fontWidth*2) * width;
+asciiCanvas.height = lineHeight * height;
+
 let imageData = null;
-let frame = null;
-let finishedThreads = 0;
-let pos = 0;
-let i = 0;
 let div = document.getElementById('ascii-cam');
 
 let worker = new Worker('js/rgbToAscii.js');
 
 worker.onmessage = function (event){
-    frame[event.data.position] = event.data.tag;
-    i = i+4;
-    pos = pos + 1;
-    finishedThreads = finishedThreads + 1;
-    if (finishedThreads === totalThreads){  
-        div.innerHTML = frame.toString().replace(/,/g, '');
-        window.requestAnimationFrame(tick);
-    } else{
-        worker.postMessage({position: pos, rgb: imageData.data.slice(i,i+3)});
+    let x = 0;
+    let y = lineHeight;
+    ctx.clearRect(0, 0, asciiCanvas.width, asciiCanvas.height);
+
+    for(let i = 0; i < width * height; i++){
+        const text = ASCII_PALETTE[event.data[i]] + ASCII_PALETTE[event.data[i]];
+        const pos = i * 4;
+        ctx.font = "normal 14px Courier";
+        ctx.fillStyle = 'rgb(' + imageData.data[pos] + ',' + imageData.data[pos+1] + ',' + imageData.data[pos+2] + ')';
+        if(i % 40 === 0 && i !== 0){
+            y = y + lineHeight;
+            x = 0;
+        }
+        ctx.fillText(text, x, y);
+        x = x + fontWidth * 2;
     }
+    
+    window.requestAnimationFrame(tick);
 }
 
 worker.postMessage({init:'init', width: width});
@@ -32,10 +52,6 @@ worker.postMessage({init:'init', width: width});
 start();
 
 function start(){
-    video = document.getElementById('video');
-    canvas = document.getElementById('canvas');
-    ctx = canvas.getContext("2d");
-
     navigator.mediaDevices.getUserMedia({video: true, audio: false})
     .then((stream) => {
         video.srcObject = stream;
@@ -49,20 +65,14 @@ function start(){
     video.addEventListener('canplay', () => {
         video.setAttribute('width', width);
         video.setAttribute('height', height);
-        canvas.setAttribute('width', width);
-        canvas.setAttribute('height', height);
+        videoCanvas.setAttribute('width', width);
+        videoCanvas.setAttribute('height', height);
         window.requestAnimationFrame(tick);
     }, false);
-
-    
 }
 
 function tick(){
-    frame = [];
-    finishedThreads = 0;
-    pos = 0;
-    i = 0;
-    ctx.drawImage(video, 0, 0, width, height);
-    imageData = ctx.getImageData(0, 0, width, height);
-    worker.postMessage({position: pos, rgb: imageData.data.slice(i,i+3)});
+    vidCtx.drawImage(video, 0, 0, width, height);
+    imageData = vidCtx.getImageData(0, 0, width, height);
+    worker.postMessage({width: imageData.width, height: imageData.height, data: imageData.data});
 }

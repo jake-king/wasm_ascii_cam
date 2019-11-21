@@ -2,16 +2,22 @@
     const __exports = {};
     let wasm;
 
-    /**
-    * @param {number} r
-    * @param {number} g
-    * @param {number} b
-    * @returns {number}
-    */
-    __exports.average_brightness = function(r, g, b) {
-        const ret = wasm.average_brightness(r, g, b);
-        return ret;
-    };
+    let cachegetUint8Memory = null;
+    function getUint8Memory() {
+        if (cachegetUint8Memory === null || cachegetUint8Memory.buffer !== wasm.memory.buffer) {
+            cachegetUint8Memory = new Uint8Array(wasm.memory.buffer);
+        }
+        return cachegetUint8Memory;
+    }
+
+    let WASM_VECTOR_LEN = 0;
+
+    function passArray8ToWasm(arg) {
+        const ptr = wasm.__wbindgen_malloc(arg.length * 1);
+        getUint8Memory().set(arg, ptr / 1);
+        WASM_VECTOR_LEN = arg.length;
+        return ptr;
+    }
 
     let cachegetInt32Memory = null;
     function getInt32Memory() {
@@ -21,40 +27,40 @@
         return cachegetInt32Memory;
     }
 
+    function getArrayU8FromWasm(ptr, len) {
+        return getUint8Memory().subarray(ptr / 1, ptr / 1 + len);
+    }
+    /**
+    * @param {number} width
+    * @param {number} height
+    * @param {Uint8Array} rgb_data
+    * @returns {Uint8Array}
+    */
+    __exports.rgb_to_ascii = function(width, height, rgb_data) {
+        const retptr = 8;
+        const ret = wasm.rgb_to_ascii(retptr, width, height, passArray8ToWasm(rgb_data), WASM_VECTOR_LEN);
+        const memi32 = getInt32Memory();
+        const v0 = getArrayU8FromWasm(memi32[retptr / 4 + 0], memi32[retptr / 4 + 1]).slice();
+        wasm.__wbindgen_free(memi32[retptr / 4 + 0], memi32[retptr / 4 + 1] * 1);
+        return v0;
+    };
+
     let cachedTextDecoder = new TextDecoder('utf-8', { ignoreBOM: true, fatal: true });
 
     cachedTextDecoder.decode();
 
-    let cachegetUint8Memory = null;
-    function getUint8Memory() {
-        if (cachegetUint8Memory === null || cachegetUint8Memory.buffer !== wasm.memory.buffer) {
-            cachegetUint8Memory = new Uint8Array(wasm.memory.buffer);
-        }
-        return cachegetUint8Memory;
-    }
-
     function getStringFromWasm(ptr, len) {
         return cachedTextDecoder.decode(getUint8Memory().subarray(ptr, ptr + len));
     }
-    /**
-    * @param {number} r
-    * @param {number} g
-    * @param {number} b
-    * @returns {string}
-    */
-    __exports.rgb_to_ascii = function(r, g, b) {
-        const retptr = 8;
-        const ret = wasm.rgb_to_ascii(retptr, r, g, b);
-        const memi32 = getInt32Memory();
-        const v0 = getStringFromWasm(memi32[retptr / 4 + 0], memi32[retptr / 4 + 1]).slice();
-        wasm.__wbindgen_free(memi32[retptr / 4 + 0], memi32[retptr / 4 + 1] * 1);
-        return v0;
-    };
 
     function init(module) {
 
         let result;
         const imports = {};
+        imports.wbg = {};
+        imports.wbg.__wbindgen_throw = function(arg0, arg1) {
+            throw new Error(getStringFromWasm(arg0, arg1));
+        };
 
         if ((typeof URL === 'function' && module instanceof URL) || typeof module === 'string' || (typeof Request === 'function' && module instanceof Request)) {
 
