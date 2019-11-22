@@ -5,7 +5,7 @@ const ASCII_PALETTE = ['.', '\'', '`', '^', '"', ':', ';', 'I',
 'w', 'd', 'b', 'k', 'h', 'a', 'o', '9', '#', 'M', 'W', '&', '8', 
 '%', 'B', '@', '$'];
 
-const width = 40;
+const width = 80;
 const height = 30;
 
 const video = document.getElementById('video');
@@ -16,7 +16,7 @@ const ctx = asciiCanvas.getContext("2d");
 
 const fontWidth =  ctx.measureText('M').width;
 const lineHeight = 16;
-asciiCanvas.width = (fontWidth*2) * width;
+asciiCanvas.width = fontWidth * width;
 asciiCanvas.height = lineHeight * height;
 
 let imageData = null;
@@ -31,7 +31,8 @@ worker.onmessage = function (event){
     ctx.imageSmoothingEnabled = false;
 
     for(let i = 0; i < width * height; i++){
-        const text = ASCII_PALETTE[event.data[i]] + ASCII_PALETTE[event.data[i]];
+        // const text = ASCII_PALETTE[event.data[i]] + ASCII_PALETTE[event.data[i]];
+        const text = ASCII_PALETTE[event.data[i]];
         const pos = i * 4;
         
         ctx.fillStyle = 'rgb(' + imageData.data[pos] + ',' + imageData.data[pos+1] + ',' + imageData.data[pos+2] + ')';
@@ -40,7 +41,7 @@ worker.onmessage = function (event){
             x = 0;
         }
         ctx.fillText(text, x, y);
-        x = x + fontWidth * 2;
+        x = x + fontWidth;
     }
     
     window.requestAnimationFrame(tick);
