@@ -17,3 +17,26 @@ body{
     font-size: 0.5vw;
     max-width: 100%;
 }
+
+.wrapper{
+    margin: 0 auto;
+    display: table;
+}
+
+.tui-frame{
+    display: inline-block;
+    border: 1px solid white;
+    padding: 10px;
+}
+
+.tui-title{
+    color: white;
+    font-family: Courier;
+    font-size: 14px;
+    font-weight: normal;
+    margin: 0;
+    background-color: black;
+    margin-top: -17px;
+    max-width: 50px;
+    padding: 0 5px;
+}
