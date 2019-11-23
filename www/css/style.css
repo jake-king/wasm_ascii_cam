@@ -1,5 +1,7 @@
 body{
     background: black;
+    font-family: monospace;
+    color: white;
 }
 
 #video{
@@ -27,6 +29,14 @@ body{
     display: inline-block;
     border: 1px solid white;
     padding: 10px;
+    color: white;
+    margin: 10px;
+    text-align: center;
+}
+
+.tui-frame a{
+    color: white;
+    text-decoration: none;
 }
 
 .tui-title{
@@ -37,6 +47,5 @@ body{
     margin: 0;
     background-color: black;
     margin-top: -17px;
-    max-width: 50px;
     padding: 0 5px;
 }

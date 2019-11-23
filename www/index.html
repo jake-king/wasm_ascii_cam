@@ -10,8 +10,18 @@
     <canvas id="canvas"></canvas>
     <div class="wrapper">
       <div class="tui-frame">
-        <h2 class="tui-title">Camera</h2>
+        <h2 class="tui-title" style="max-width: 50px;">Camera</h2>
         <canvas id="ascii-cam"></canvas>
+      </div>
+    </div>
+    <div class="wrapper">
+      <div class="tui-frame">
+        <h2 class="tui-title">Brightness</h2>
+        <a href="javascript:settings.adjust('brightness', -0.1);">[-]</a>&nbsp;<span id="brightness">1</span>&nbsp;<a href="javascript:settings.adjust('brightness', 0.1);">[+]</a>
+      </div>
+      <div class="tui-frame">
+        <h2 class="tui-title">Contrast</h2>
+        <a href="javascript:settings.adjust('contrast', -0.1);">[-]</a>&nbsp;<span id="contrast">1</span>&nbsp;<a href="javascript:settings.adjust('contrast', 0.1);">[+]</a>
       </div>
     </div>
     <noscript>This page contains webassembly and javascript content, please enable javascript in your browser.</noscript>

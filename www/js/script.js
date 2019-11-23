@@ -1,3 +1,24 @@
+class VideoSettings{
+    constructor(){
+        this.brightness = 1;
+        this.contrast = 1;
+    }
+
+    adjust(setting, value){
+        switch(setting){
+            case 'brightness':
+                this.brightness =  this.brightness + value;
+                document.getElementById('brightness').innerText = Math.round(10*this.brightness)/10;
+                break;
+            case 'contrast':
+                this.contrast =  this.contrast + value;
+                document.getElementById('contrast').innerText = Math.round(10*this.contrast)/10;
+                break;
+        }
+        
+    }
+}
+
 const ASCII_PALETTE = ['.', '\'', '`', '^', '"', ':', ';', 'I', 
 'l', '!', 'i', '>', '<', '~', '+', '-', '?', ']', '[', '}', '{', 
 '1', ')', '(', '|', '\\', '/', 't', 'f', 'r', 'x', 'n', 'u', 'v', 
@@ -13,6 +34,8 @@ const videoCanvas = document.getElementById('canvas');
 const asciiCanvas = document.getElementById('ascii-cam');
 const vidCtx = videoCanvas.getContext("2d");
 const ctx = asciiCanvas.getContext("2d");
+
+const settings = new VideoSettings();
 
 const fontWidth =  ctx.measureText('M').width;
 const lineHeight = 16;
@@ -31,7 +54,6 @@ worker.onmessage = function (event){
     ctx.imageSmoothingEnabled = false;
 
     for(let i = 0; i < width * height; i++){
-        // const text = ASCII_PALETTE[event.data[i]] + ASCII_PALETTE[event.data[i]];
         const text = ASCII_PALETTE[event.data[i]];
         const pos = i * 4;
         
@@ -72,6 +94,7 @@ function start(){
 }
 
 function tick(){
+    vidCtx.filter = 'brightness(' + settings.brightness + ') ' + 'contrast(' + settings.contrast + ')';
     vidCtx.drawImage(video, 0, 0, width, height);
     imageData = vidCtx.getImageData(0, 0, width, height);
     worker.postMessage({width: imageData.width, height: imageData.height, data: imageData.data});
