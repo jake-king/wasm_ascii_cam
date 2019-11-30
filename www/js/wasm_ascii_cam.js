@@ -31,14 +31,12 @@
         return getUint8Memory().subarray(ptr / 1, ptr / 1 + len);
     }
     /**
-    * @param {number} width
-    * @param {number} height
     * @param {Uint8Array} rgb_data
     * @returns {Uint8Array}
     */
-    __exports.rgb_to_ascii = function(width, height, rgb_data) {
+    __exports.rgb_to_ascii = function(rgb_data) {
         const retptr = 8;
-        const ret = wasm.rgb_to_ascii(retptr, width, height, passArray8ToWasm(rgb_data), WASM_VECTOR_LEN);
+        const ret = wasm.rgb_to_ascii(retptr, passArray8ToWasm(rgb_data), WASM_VECTOR_LEN);
         const memi32 = getInt32Memory();
         const v0 = getArrayU8FromWasm(memi32[retptr / 4 + 0], memi32[retptr / 4 + 1]).slice();
         wasm.__wbindgen_free(memi32[retptr / 4 + 0], memi32[retptr / 4 + 1] * 1);

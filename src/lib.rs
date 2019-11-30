@@ -15,12 +15,13 @@ static ALLOC: wee_alloc::WeeAlloc = wee_alloc::WeeAlloc::INIT;
 // 'W', '&', '8', '%', 'B', '@', '$'];
 
 #[wasm_bindgen]
-pub fn rgb_to_ascii(width:usize, height: usize, rgb_data: &[u8]) -> Vec<u8>{
+pub fn rgb_to_ascii(rgb_data: &[u8]) -> Vec<u8>{
     let mut i: usize = 0;
     let mut pos: usize = 0;
     let mut frame: Vec<u8> = Vec::new();
-    
-    while i <= (width * height) - 1 {
+    let pixels: usize = rgb_data.len() / 4;
+
+    while i < pixels {
         let r_avg: u8 = rgb_data[pos]/3;
         let g_avg: u8 = rgb_data[pos+1]/3;
         let b_avg: u8 = rgb_data[pos+2]/3;
