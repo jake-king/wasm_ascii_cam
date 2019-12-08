@@ -2,6 +2,22 @@ body{
     background: black;
     font-family: monospace;
     color: white;
+    font-size: 2vmax;
+}
+
+button{
+    color: white;
+    background-color: black;
+    border: none;
+    font-size: 2vmax;
+}
+
+select{
+    color: white;
+    background-color: black;
+    border: none;
+    font-size: 2vmax;
+    font-family: monospace;
 }
 
 #video{
@@ -12,12 +28,25 @@ body{
     display: none;
 }
 
-#ascii-cam{
-    background: black;
-    display: inline-block;
-    font-family: monospace;
-    font-size: 0.5vw;
-    max-width: 100%;
+.grid-wrapper{
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    grid-template-rows: auto;
+    grid-template-areas: "canvas canvas canvas";
+    align-items: center;
+    align-content: center;
+    text-align: center;
+    grid-gap: 15px;
+}
+
+.grid-wrapper div{
+    border: 1px solid white;
+    padding: 5px;
+}
+
+#ascii-canvas { 
+    grid-area: canvas; 
+    justify-content: center;
 }
 
 .wrapper{
@@ -40,12 +69,17 @@ body{
 }
 
 .tui-title{
-    color: white;
-    font-family: Courier;
-    font-size: 14px;
+    display: table;
+    border: none !important;
+    position: relative;
+    top: -20px;
+    left: 5px;
+    background-color: black;
+    padding: 0 5px;
+}
+
+.tui-title h2{
+    font-size: 2vmax;
     font-weight: normal;
     margin: 0;
-    background-color: black;
-    margin-top: -17px;
-    padding: 0 5px;
 }

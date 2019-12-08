@@ -7,6 +7,7 @@ export const ASCII_PALETTE = ['.', '\'', '`', '^', '"', ':', ';', 'I',
 
 export class AsciiCam {
     constructor(width, height, threadPool){
+        this.active = false;
         this.width = width;
         this.height = height;
         this.video = document.getElementById('video');
@@ -35,7 +36,9 @@ export class AsciiCam {
             this.data = this.concatenate(...this.chunks);
             this.chunks = [];
             this.finishedWorkers = 0;
-            this.render();
+            if (this.active === true){
+                this.render();
+            }
         }
     }
 
@@ -66,10 +69,11 @@ export class AsciiCam {
         return chunkedImageData;
     }
 
-    init(){
-        navigator.mediaDevices.getUserMedia({video: true, audio: false})
+    init(deviceId){
+        navigator.mediaDevices.getUserMedia({video: {deviceId: deviceId}, audio: false})
         .then((stream) => {
             this.video.srcObject = stream;
+            this.track = stream.getTracks()[0];
             this.video.setAttribute("playsinline", true); 
             this.video.play();
         })
@@ -84,12 +88,13 @@ export class AsciiCam {
             this.videoCanvas.setAttribute('height', this.height);
             this.ctx.font = "normal 14px monospace";
             this.ctx.imageSmoothingEnabled = false;
-            window.requestAnimationFrame(this.tick.bind(this));
+            this.active = true;
+            this.animationRequest = window.requestAnimationFrame(this.tick.bind(this));
         }, false);
     }
 
     tick(){
-        this.vidCtx.filter = 'brightness(' + this.settings.brightness + ') ' + 'contrast(' + this.settings.contrast + ')';
+        this.vidCtx.filter = `brightness(${this.settings.brightness}) contrast(${this.settings.contrast})`;
         this.vidCtx.drawImage(this.video, 0, 0, this.width, this.height);
         this.imageData = this.vidCtx.getImageData(0, 0, this.width, this.height);
         let chunkedData = this.chunkImageData(this.imageData.data);
@@ -116,8 +121,9 @@ export class AsciiCam {
             this.ctx.fillText(text, x, y);
             x = x + this.fontWidth;
         }
-        
-        window.requestAnimationFrame(this.tick.bind(this));
+        if (this.active === true){
+            this.animationRequest = window.requestAnimationFrame(this.tick.bind(this));
+        }
     }
 }
 
@@ -125,6 +131,22 @@ export class VideoSettings{
     constructor(){
         this.brightness = 1;
         this.contrast = 1;
+        document.getElementById('contrast-subtract').addEventListener('click', (event) => {
+            event.preventDefault();
+            this.adjust('contrast', -0.1);
+        });
+        document.getElementById('contrast-add').addEventListener('click', (event) => {
+            event.preventDefault();
+            this.adjust('contrast', 0.1);
+        });
+        document.getElementById('brightness-subtract').addEventListener('click', (event) => {
+            event.preventDefault();
+            this.adjust('brightness', -0.1);
+        });
+        document.getElementById('brightness-add').addEventListener('click', (event) => {
+            event.preventDefault();
+            this.adjust('brightness', 0.1);
+        });
     }
 
     adjust(setting, value){

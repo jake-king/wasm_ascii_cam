@@ -6,24 +6,28 @@
     <link href="css/style.css" rel="stylesheet" type="text/css">
   </head>
   <body>
-    <video id="video">Video stream not available</video>
-    <canvas id="canvas"></canvas>
-    <div class="wrapper">
-      <div class="tui-frame">
-        <h2 class="tui-title" style="max-width: 50px;">Camera</h2>
+    <div class="grid-wrapper">
+      <div id="ascii-canvas">
+        <div class="tui-title"><h2>Output</h2></div>
         <canvas id="ascii-cam"></canvas>
       </div>
-    </div>
-    <div class="wrapper">
-      <div class="tui-frame">
-        <h2 class="tui-title">Brightness</h2>
-        <a href="javascript:settings.adjust('brightness', -0.1);">[-]</a>&nbsp;<span id="brightness">1</span>&nbsp;<a href="javascript:settings.adjust('brightness', 0.1);">[+]</a>
+      <div>
+          <div class="tui-title"><h2>Brightness</h2></div>
+        <button id="brightness-subtract">[ - ]</button>&nbsp;<span id="brightness">1.0</span>&nbsp;<button id="brightness-add">[ + ]</button>
       </div>
-      <div class="tui-frame">
-        <h2 class="tui-title">Contrast</h2>
-        <a href="javascript:settings.adjust('contrast', -0.1);">[-]</a>&nbsp;<span id="contrast">1</span>&nbsp;<a href="javascript:settings.adjust('contrast', 0.1);">[+]</a>
+      <div>
+          <div class="tui-title"><h2>Contrast</h2></div>
+        <button id="contrast-subtract">[ - ]</button>&nbsp;<span id="contrast">1.0</span>&nbsp;<button id="contrast-add">[ + ]</button>
+      </div>
+      <div>
+          <div class="tui-title"><h2>Cameras</h2></div>
+        <select id="cameras">
+          <option value="nocam">--Select Camera--</option>
+        </select>
       </div>
     </div>
+    <video id="video">Video stream not available</video>
+    <canvas id="canvas"></canvas>
     <noscript>This page contains webassembly and javascript content, please enable javascript in your browser.</noscript>
     <script type="module" src="js/script.js"></script>
   </body>
