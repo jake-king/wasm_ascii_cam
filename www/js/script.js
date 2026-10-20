@@ -47,8 +47,8 @@ async function openCamera(deviceId) {
     } catch (err) {
         if (err instanceof Superseded) return;   // a newer choice is starting
         console.error(`Could not open the camera: ${err}`);
-        cameras.value = OFF;
-        cam.stop(CAMERA_ERRORS[err.name] ?? `[ camera error: ${err.name || err} ]`);
+        cam.stop(CAMERA_ERRORS[err.name] ?? `[ camera error: ${err.message || err} ]`);
+        await listCameras(OFF);
     }
     showStatus();
 }
@@ -121,5 +121,14 @@ document.addEventListener('keydown', event => {
 new ResizeObserver(() => cam.layout()).observe(document.getElementById('screen'));
 // On load, ask for camera permission and start the default camera.
 setDetail(0);
-cam.stop('[ waiting for camera permission ]');
-listCameras().then(() => openCamera(''));
+// Firefox holds the permission prompt until the page has focus, e.g. after
+// the address bar was used to open it.
+cam.stop(document.hasFocus()
+    ? '[ waiting for camera permission ]'
+    : '[ click here to enable the camera ]');
+window.addEventListener('focus', () => {
+    if (!cam.active && cam.idleMessage === '[ click here to enable the camera ]') {
+        cam.stop('[ waiting for camera permission ]');
+    }
+});
+openCamera('');

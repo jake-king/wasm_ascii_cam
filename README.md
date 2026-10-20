@@ -42,7 +42,7 @@ cargo install wasm-pack
 cargo test                                    # unit tests for the Rust core
 node --test                                   # unit tests for frame chunking (Node 22+)
 wasm-pack build --release --target no-modules --no-typescript --out-dir www/pkg
-python3 -m http.server --directory www 8000   # then open http://localhost:8000
+python3 serve.py                              # then open http://localhost:8000
 ```
 
 Browsers only allow camera access on `https://` or `localhost`.

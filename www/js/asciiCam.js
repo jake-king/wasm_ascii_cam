@@ -26,9 +26,7 @@ export class AsciiCam {
         this.ctx = canvas.getContext('2d');
         this.onStats = onStats;
 
-        this.video = document.createElement('video');
-        this.video.muted = true;
-        this.video.playsInline = true;
+        this.video = null;
         this.frameCanvas = document.createElement('canvas');
         this.frameCtx = this.frameCanvas.getContext('2d', { willReadFrequently: true });
 
@@ -99,9 +97,17 @@ export class AsciiCam {
             throw new Superseded();
         }
         this.stream = stream;
+        this.video = document.createElement('video');
+        this.video.muted = true;
+        this.video.playsInline = true;
+        this.video.autoplay = true;
+        // Kept in the page (hidden): some browser extensions re-play detached
+        // video elements, which aborts our own play() call.
+        this.video.hidden = true;
+        document.body.append(this.video);
         this.video.srcObject = stream;
         try {
-            await this.video.play();
+            await whenPlaying(this.video);
         } catch (err) {
             throw request !== this.request ? new Superseded() : err;
         }
@@ -119,7 +125,11 @@ export class AsciiCam {
         window.cancelAnimationFrame(this.raf);
         if (this.stream) this.stream.getTracks().forEach(track => track.stop());
         this.stream = null;
-        this.video.srcObject = null;
+        if (this.video) {
+            this.video.srcObject = null;
+            this.video.remove();
+        }
+        this.video = null;
         this.frameTimes = [];
         this.drawIdle();
     }
@@ -133,6 +143,7 @@ export class AsciiCam {
     // Draw the camera into the small frame canvas, cropped to the grid's shape,
     // then hand the pixels to the workers.
     capture() {
+        if (!this.video) return;
         const vw = this.video.videoWidth;
         const vh = this.video.videoHeight;
         if (!vw || !vh) return;
@@ -213,6 +224,19 @@ export class AsciiCam {
         ctx.fillText(this.idleMessage, w / dpr / 2, h / dpr / 2);
         ctx.textAlign = 'start';
     }
+}
+
+// Resolves when the video is playing. Firefox can reject play() with
+// AbortError for a camera stream that then plays anyway (autoplay), so the
+// 'playing' event decides; give up if nothing plays within 15 seconds.
+function whenPlaying(video) {
+    return new Promise((resolve, reject) => {
+        const timer = setTimeout(() => reject(new Error('the camera did not start')), 15000);
+        video.addEventListener('playing', () => { clearTimeout(timer); resolve(); }, { once: true });
+        video.play().catch(err => {
+            if (err.name !== 'AbortError') { clearTimeout(timer); reject(err); }
+        });
+    });
 }
 
 // A camera start that was cancelled by a newer start() or stop().
