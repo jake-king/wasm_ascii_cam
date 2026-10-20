@@ -27,6 +27,7 @@ uniform sampler2D atlas;               // glyphs, white on transparent
 uniform ivec2 cellSize;                // device pixels
 uniform int rows;
 uniform bool mono;
+uniform float fill;                    // cell background, as a fraction of its colour
 uniform vec3 monoColour;
 out vec4 colour;
 
@@ -41,7 +42,7 @@ void main() {
     float ink = texelFetch(atlas, atlasCell * cellSize + inCell, 0).a;
 
     vec3 tint = mono ? monoColour : texelFetch(cellColour, cell, 0).rgb;
-    colour = vec4(tint * ink, 1.0);
+    colour = vec4(mix(tint * fill, tint, ink), 1.0);
 }`;
 
 export class WebGlRenderer {
@@ -56,7 +57,7 @@ export class WebGlRenderer {
         this.program = linkProgram(gl, VERTEX_SHADER, FRAGMENT_SHADER);
         gl.useProgram(this.program);
         this.uniforms = {};
-        for (const name of ['glyphIndex', 'cellColour', 'atlas', 'cellSize', 'rows', 'mono', 'monoColour']) {
+        for (const name of ['glyphIndex', 'cellColour', 'atlas', 'cellSize', 'rows', 'mono', 'monoColour', 'fill']) {
             this.uniforms[name] = gl.getUniformLocation(this.program, name);
         }
         gl.uniform1i(this.uniforms.glyphIndex, 0);
@@ -87,7 +88,7 @@ export class WebGlRenderer {
         gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, drawAtlas(grid));
     }
 
-    draw(indices, rgba, mono) {
+    draw(indices, rgba, mono, fill = 0) {
         const gl = this.gl;
         const { columns, rows } = this.grid;
         gl.activeTexture(gl.TEXTURE0);
@@ -97,6 +98,7 @@ export class WebGlRenderer {
             gl.texSubImage2D(gl.TEXTURE_2D, 0, 0, 0, columns, rows, gl.RGBA, gl.UNSIGNED_BYTE, rgba);
         }
         gl.uniform1i(this.uniforms.mono, mono ? 1 : 0);
+        gl.uniform1f(this.uniforms.fill, fill);
         gl.uniform3f(this.uniforms.monoColour, ...this.grid.monoColour);
         gl.drawArrays(gl.TRIANGLES, 0, 3);
     }
@@ -118,13 +120,23 @@ export class Canvas2dRenderer {
         this.grid = grid;
     }
 
-    draw(indices, rgba, mono) {
+    draw(indices, rgba, mono, fill = 0) {
         const { ctx, grid } = this;
         ctx.fillStyle = '#000';
         ctx.fillRect(0, 0, grid.columns * grid.cellWidth, grid.rows * grid.cellHeight);
         ctx.font = `${grid.fontSize}px ${grid.fontFamily}`;
         ctx.textBaseline = 'top';
         if (mono) ctx.fillStyle = grid.monoCss;
+        if (fill > 0) {
+            for (let i = 0; i < grid.columns * grid.rows; i++) {
+                const p = i * 4;
+                const [r, g, b] = mono ? grid.monoColour.map(c => c * 255) : [rgba[p], rgba[p + 1], rgba[p + 2]];
+                ctx.fillStyle = `rgb(${r * fill},${g * fill},${b * fill})`;
+                ctx.fillRect((i % grid.columns) * grid.cellWidth, Math.floor(i / grid.columns) * grid.cellHeight,
+                    grid.cellWidth, grid.cellHeight);
+            }
+            if (mono) ctx.fillStyle = grid.monoCss;
+        }
         for (let row = 0, i = 0; row < grid.rows; row++) {
             const y = row * grid.cellHeight + grid.textTop;
             for (let col = 0; col < grid.columns; col++, i++) {

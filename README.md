@@ -6,7 +6,9 @@ Live webcam video, or any video file, rendered as coloured ASCII art in the brow
 
 The interface is styled after a curses terminal app: box-drawn windows, inverse title and key bars, and keyboard shortcuts.
 
-![AsciiCam at 160×60, rendering a camera test pattern](docs/screenshot.png)
+![A scene from the Blender open movie Spring, rendered as coloured ASCII at 160×60 with Fill on](docs/demo.gif)
+
+<sub>Demo footage: [*Spring*](https://studio.blender.org/films/spring/) © Blender Foundation | cloud.blender.org/spring, licensed under [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/). Changes: a 5-second excerpt, converted to ASCII by this app and encoded as a GIF.</sub>
 
 ## How it works
 
@@ -19,7 +21,7 @@ camera ─► <video> ─► grid-sized canvas ─► split into chunks ─► W
 1. Each animation frame, the camera image is cropped to the grid's shape, mirrored if enabled, and scaled down to one pixel per character (80×30, 120×45 or 160×60) on a hidden canvas, with brightness and contrast applied as a canvas filter.
 2. The RGBA pixels are split into whole-pixel chunks, one per CPU core, and sent to a pool of Web Workers.
 3. Each worker runs `rgb_to_ascii` (Rust, [`src/lib.rs`](src/lib.rs)). It computes Rec. 601 luma for each pixel and maps it to one of 64 glyphs, from `.` (dark) to `$` (bright), 16 pixels at a time with WebAssembly SIMD (below).
-4. The main thread reassembles the chunks in order and draws each glyph in its source pixel's colour, or in phosphor green in Mono mode, with WebGL (below). Frames are tagged with an id, so results from before a size or camera change are dropped.
+4. The main thread reassembles the chunks in order and draws each glyph in its source pixel's colour, or in phosphor green in Mono mode, with WebGL (below). With **Fill** on, each cell's background is shaded at 50% of its colour, which keeps colour vivid when the image is viewed small. With **Fit** on (the default for video files), the whole frame is shown with black bars instead of being cropped to the grid's shape. Frames are tagged with an id, so results from before a size or camera change are dropped.
 
 ## Rendering
 
@@ -79,6 +81,8 @@ Known limitation: browsers write recorded WebM files without a duration in the h
 | `r` | Reset brightness and contrast |
 | `m` | Mirror on/off |
 | `g` | Mono (green) on/off |
+| `f` | Fill: shade each cell's background with its colour |
+| `w` | Fit: show the whole frame with black bars, instead of cropping (on for video files) |
 | `s` / `t` | Save the current frame as PNG / text |
 | `o` | Open a video file |
 | `space` | Pause / play the video |

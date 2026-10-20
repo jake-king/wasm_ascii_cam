@@ -19,6 +19,7 @@ export const DETAIL_LEVELS = [
 const FONT_FAMILY = 'ui-monospace, "DejaVu Sans Mono", Menlo, Consolas, monospace';
 const LINE_HEIGHT = 1.2;   // line height as a multiple of font size
 const MONO_COLOUR = '#33ff66';
+const FILL_LEVEL = 0.5;    // Fill: cell background at 50% of the cell's colour
 const MONO_RGB = [0x33 / 255, 0xff / 255, 0x66 / 255];
 
 export class AsciiCam {
@@ -39,6 +40,8 @@ export class AsciiCam {
         this.contrast = 1;
         this.mirror = true;
         this.mono = false;
+        this.fill = false;       // shade each cell's background with its colour
+        this.fit = false;        // show the whole frame (letterbox) instead of cropping
         this.idleMessage = '[ no camera: choose one under Controls ]';
 
         this.stream = null;
@@ -254,16 +257,27 @@ export class AsciiCam {
         const vh = this.video.videoHeight;
         if (!vw || !vh) return;
 
+        // The grid's on-screen shape: cells are taller than they are wide.
         const shape = (this.width / this.height) * this.cellAspect;
-        let sx = 0, sy = 0, sw = vw, sh = vh;
-        if (vw / vh > shape) { sw = vh * shape; sx = (vw - sw) / 2; }
-        else { sh = vw / shape; sy = (vh - sh) / 2; }
+        let sx = 0, sy = 0, sw = vw, sh = vh;           // source rectangle
+        let dx = 0, dy = 0, dw = this.width, dh = this.height;  // destination
+        if (this.fit) {
+            // Whole frame, with black bars.
+            if (vw / vh > shape) { dh = this.height * shape / (vw / vh); dy = (this.height - dh) / 2; }
+            else { dw = this.width * (vw / vh) / shape; dx = (this.width - dw) / 2; }
+        } else {
+            // Crop to the grid's shape.
+            if (vw / vh > shape) { sw = vh * shape; sx = (vw - sw) / 2; }
+            else { sh = vw / shape; sy = (vh - sh) / 2; }
+        }
 
         const ctx = this.frameCtx;
         ctx.save();
+        ctx.fillStyle = '#000';
+        ctx.fillRect(0, 0, this.width, this.height);
         ctx.filter = `brightness(${this.brightness}) contrast(${this.contrast})`;
         if (this.mirror) { ctx.translate(this.width, 0); ctx.scale(-1, 1); }
-        ctx.drawImage(this.video, sx, sy, sw, sh, 0, 0, this.width, this.height);
+        ctx.drawImage(this.video, sx, sy, sw, sh, dx, dy, dw, dh);
         ctx.restore();
 
         this.pixels = ctx.getImageData(0, 0, this.width, this.height).data;
@@ -288,7 +302,7 @@ export class AsciiCam {
     render(indices) {
         const start = performance.now();
         this.lastFrame = { indices, pixels: this.pixels, width: this.width, height: this.height };
-        this.renderer.draw(indices, this.pixels, this.mono);
+        this.renderer.draw(indices, this.pixels, this.mono, this.fill ? FILL_LEVEL : 0);
         this.renderMs += (performance.now() - start - this.renderMs) * 0.1;
         this.overlay.hidden = true;
         this.tickStats();
@@ -300,7 +314,7 @@ export class AsciiCam {
     snapshotPng() {
         const frame = this.lastFrame;
         if (!frame || frame.width !== this.width) return Promise.resolve(null);
-        this.renderer.draw(frame.indices, frame.pixels, this.mono);
+        this.renderer.draw(frame.indices, frame.pixels, this.mono, this.fill ? FILL_LEVEL : 0);
         return new Promise(resolve => this.canvas.toBlob(resolve, 'image/png'));
     }
 

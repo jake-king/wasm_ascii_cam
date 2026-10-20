@@ -56,6 +56,7 @@ async function openCamera(deviceId) {
         exporting?.abort();
         showFileControls(false);
         setToggle('mirror', true);
+        setToggle('fit', false);
         const opened = await cam.start(deviceId);
         await listCameras(opened);
     } catch (err) {
@@ -181,6 +182,7 @@ fileInput.addEventListener('change', async () => {
     try {
         await cam.startFile(file);
         setToggle('mirror', false);
+        setToggle('fit', true);
         showFileControls(true);
     } catch (err) {
         if (err instanceof Superseded) return;
@@ -247,6 +249,7 @@ const KEYS = {
     'c': () => adjust('contrast', -0.1), 'C': () => adjust('contrast', 0.1),
     'r': () => { reset('brightness'); reset('contrast'); },
     'm': () => toggle('mirror'), 'g': () => toggle('mono'),
+    'f': () => toggle('fill'), 'w': () => toggle('fit'),
     's': savePng, 't': saveText,
     'o': () => fileInput.click(),
     ' ': () => { if (!exporting) cam.togglePause(); },
