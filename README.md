@@ -28,6 +28,7 @@ camera ─► <video> ─► grid-sized canvas ─► split into chunks ─► W
 | `1` `2` `3` | Detail: 80×30, 120×45, 160×60 |
 | `b` / `B` | Brightness down / up |
 | `c` / `C` | Contrast down / up |
+| `r` | Reset brightness and contrast |
 | `m` | Mirror on/off |
 | `g` | Mono (green) on/off |
 

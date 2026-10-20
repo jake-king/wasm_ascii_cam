@@ -37,6 +37,7 @@
             <button data-adjust="brightness" data-step="-0.1" aria-label="Less brightness">[-]</button>
             <output id="brightness">1.0</output>
             <button data-adjust="brightness" data-step="0.1" aria-label="More brightness">[+]</button>
+            <button data-reset="brightness" aria-label="Reset brightness">[reset]</button>
           </dd>
 
           <dt>Contrast</dt>
@@ -44,6 +45,7 @@
             <button data-adjust="contrast" data-step="-0.1" aria-label="Less contrast">[-]</button>
             <output id="contrast">1.0</output>
             <button data-adjust="contrast" data-step="0.1" aria-label="More contrast">[+]</button>
+            <button data-reset="contrast" aria-label="Reset contrast">[reset]</button>
           </dd>
 
           <dt>Mirror</dt>
@@ -59,7 +61,7 @@
     <footer class="bar">
       <span class="keys">
         <kbd>1</kbd>-<kbd>3</kbd>Detail <kbd>b</kbd>/<kbd>B</kbd>Bright <kbd>c</kbd>/<kbd>C</kbd>Contrast
-        <kbd>m</kbd>Mirror <kbd>g</kbd>Mono
+        <kbd>r</kbd>Reset <kbd>m</kbd>Mirror <kbd>g</kbd>Mono
       </span>
       <span id="status">idle</span>
     </footer>

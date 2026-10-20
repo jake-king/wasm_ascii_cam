@@ -84,8 +84,16 @@ function adjust(setting, step) {
     document.getElementById(setting).textContent = cam[setting].toFixed(1);
 }
 
+function reset(setting) {
+    cam[setting] = 1;
+    document.getElementById(setting).textContent = '1.0';
+}
+
 document.querySelectorAll('[data-adjust]').forEach(button => {
     button.addEventListener('click', () => adjust(button.dataset.adjust, Number(button.dataset.step)));
+});
+document.querySelectorAll('[data-reset]').forEach(button => {
+    button.addEventListener('click', () => reset(button.dataset.reset));
 });
 
 // Mirror and mono toggles.
@@ -105,6 +113,7 @@ const KEYS = {
     '1': () => setDetail(0), '2': () => setDetail(1), '3': () => setDetail(2),
     'b': () => adjust('brightness', -0.1), 'B': () => adjust('brightness', 0.1),
     'c': () => adjust('contrast', -0.1), 'C': () => adjust('contrast', 0.1),
+    'r': () => { reset('brightness'); reset('contrast'); },
     'm': () => toggle('mirror'), 'g': () => toggle('mono'),
 };
 
@@ -120,7 +129,7 @@ document.addEventListener('keydown', event => {
 
 new ResizeObserver(() => cam.layout()).observe(document.getElementById('screen'));
 // On load, ask for camera permission and start the default camera.
-setDetail(0);
+setDetail(DETAIL_LEVELS.length - 1);
 // Firefox holds the permission prompt until the page has focus, e.g. after
 // the address bar was used to open it.
 cam.stop(document.hasFocus()

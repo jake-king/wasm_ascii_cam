@@ -48,7 +48,7 @@ kbd + kbd { margin-left: 0; }
 /* Windows */
 main {
     display: grid;
-    grid-template-columns: 1fr 40ch;
+    grid-template-columns: 1fr 46ch;
     gap: 1ch;
     padding: 1ch;
     min-height: 0;

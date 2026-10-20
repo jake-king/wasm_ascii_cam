@@ -46,7 +46,7 @@ export class AsciiCam {
         this.ctx.font = `100px ${FONT_FAMILY}`;
         this.charWidth = this.ctx.measureText('M').width / 100;
 
-        this.setDetail(0);
+        this.setDetail(DETAIL_LEVELS.length - 1);
     }
 
     setDetail(level) {
