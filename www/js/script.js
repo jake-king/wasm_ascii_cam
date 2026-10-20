@@ -18,12 +18,13 @@ function showStatus() {
         : `idle · ${width}×${height} · ${workers} workers`;
 }
 
-// Camera menu. Names are hidden until the page has camera permission,
-// so the list is refreshed after a camera starts.
+// Camera menu. Until the page has camera permission, browsers hide camera
+// names and ids, so an option's value may be empty: that opens the default
+// camera, and the list is refreshed with real names and ids once it starts.
 const cameras = document.getElementById('cameras');
+const OFF = 'off';
 
-async function listCameras() {
-    const selected = cameras.value;
+async function listCameras(selected = cameras.value) {
     const devices = await navigator.mediaDevices.enumerateDevices();
     cameras.length = 1;
     devices.filter(d => d.kind === 'videoinput').forEach((d, i) => {
@@ -33,16 +34,18 @@ async function listCameras() {
 }
 
 cameras.addEventListener('change', async () => {
-    if (!cameras.value) {
+    if (cameras.value === OFF) {
         cam.stop();
     } else {
         try {
-            await cam.start(cameras.value);
-            await listCameras();
+            const opened = await cam.start(cameras.value);
+            await listCameras(opened);
         } catch (err) {
             console.error(`Could not open the camera: ${err}`);
-            cameras.value = '';
+            status.textContent = `camera error: ${err.name || err}`;
+            cameras.value = OFF;
             cam.stop();
+            return;
         }
     }
     showStatus();

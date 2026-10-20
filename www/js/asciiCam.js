@@ -81,16 +81,19 @@ export class AsciiCam {
         if (!this.active) this.drawIdle();
     }
 
+    // Start a camera by device id, or the default camera when the id is empty
+    // (browsers hide ids until the page has camera permission).
+    // Resolves to the id of the camera actually opened.
     async start(deviceId) {
         this.stop();
-        this.stream = await navigator.mediaDevices.getUserMedia({
-            video: { deviceId: { exact: deviceId }, width: { ideal: 640 } },
-            audio: false,
-        });
+        const video = { width: { ideal: 640 } };
+        if (deviceId) video.deviceId = { exact: deviceId };
+        this.stream = await navigator.mediaDevices.getUserMedia({ video, audio: false });
         this.video.srcObject = this.stream;
         await this.video.play();
         this.active = true;
         this.loop();
+        return this.stream.getVideoTracks()[0].getSettings().deviceId;
     }
 
     stop() {
