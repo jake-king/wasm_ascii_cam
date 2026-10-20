@@ -33,22 +33,32 @@ async function listCameras(selected = cameras.value) {
     cameras.value = selected;
 }
 
-cameras.addEventListener('change', async () => {
-    if (cameras.value === OFF) {
-        cam.stop();
-    } else {
-        try {
-            const opened = await cam.start(cameras.value);
-            await listCameras(opened);
-        } catch (err) {
-            console.error(`Could not open the camera: ${err}`);
-            status.textContent = `camera error: ${err.name || err}`;
-            cameras.value = OFF;
-            cam.stop();
-            return;
-        }
+const IDLE = '[ no camera: choose one under Controls ]';
+const CAMERA_ERRORS = {
+    NotAllowedError: '[ camera blocked: allow it in the address bar, then choose a camera ]',
+    NotFoundError: '[ no camera found ]',
+    NotReadableError: '[ camera is busy or unavailable ]',
+};
+
+async function openCamera(deviceId) {
+    try {
+        const opened = await cam.start(deviceId);
+        await listCameras(opened);
+    } catch (err) {
+        console.error(`Could not open the camera: ${err}`);
+        cameras.value = OFF;
+        cam.stop(CAMERA_ERRORS[err.name] ?? `[ camera error: ${err.name || err} ]`);
     }
     showStatus();
+}
+
+cameras.addEventListener('change', () => {
+    if (cameras.value === OFF) {
+        cam.stop(IDLE);
+        showStatus();
+    } else {
+        openCamera(cameras.value);
+    }
 });
 
 // Detail: one radio-style button per level.
@@ -108,5 +118,7 @@ document.addEventListener('keydown', event => {
 });
 
 new ResizeObserver(() => cam.layout()).observe(document.getElementById('screen'));
+// On load, ask for camera permission and start the default camera.
 setDetail(0);
-listCameras();
+cam.stop('[ waiting for camera permission ]');
+listCameras().then(() => openCamera(''));

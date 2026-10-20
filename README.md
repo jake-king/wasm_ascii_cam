@@ -2,7 +2,7 @@
 
 Live webcam video rendered as coloured ASCII art in the browser. The per-pixel work runs in Rust compiled to WebAssembly, spread across a pool of Web Workers.
 
-**[Live demo](https://jake-king.github.io/wasm_ascii_cam/)**. Pick a camera under Controls. Video never leaves your machine; everything runs locally in the page.
+**[Live demo](https://jake-king.github.io/wasm_ascii_cam/)**. Allow camera access when asked; switch cameras under Controls. Video never leaves your machine; everything runs locally in the page.
 
 The interface is styled after a curses terminal app: box-drawn windows, inverse title and key bars, and keyboard shortcuts.
 

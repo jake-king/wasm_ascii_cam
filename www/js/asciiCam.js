@@ -36,6 +36,7 @@ export class AsciiCam {
         this.contrast = 1;
         this.mirror = true;
         this.mono = false;
+        this.idleMessage = '[ no camera: choose one under Controls ]';
 
         this.stream = null;
         this.active = false;
@@ -96,7 +97,8 @@ export class AsciiCam {
         return this.stream.getVideoTracks()[0].getSettings().deviceId;
     }
 
-    stop() {
+    stop(message) {
+        this.idleMessage = message ?? this.idleMessage;
         this.active = false;
         this.inFlight = null;
         window.cancelAnimationFrame(this.raf);
@@ -185,12 +187,15 @@ export class AsciiCam {
         const w = this.canvas.width, h = this.canvas.height;
         ctx.fillStyle = '#000';
         ctx.fillRect(0, 0, w, h);
-        ctx.font = `${Math.max(12, this.fontSize * 1.4)}px ${FONT_FAMILY}`;
+        const dpr = window.devicePixelRatio || 1;
+        // Largest font up to 1.4 cells that fits the message on one line.
+        const room = (w / dpr) * 0.94;
+        const fit = room / (this.idleMessage.length * this.charWidth);
+        ctx.font = `${Math.min(this.fontSize * 1.4, fit)}px ${FONT_FAMILY}`;
         ctx.fillStyle = '#c0c0c0';
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
-        const dpr = window.devicePixelRatio || 1;
-        ctx.fillText('[ no camera: choose one under Controls ]', w / dpr / 2, h / dpr / 2);
+        ctx.fillText(this.idleMessage, w / dpr / 2, h / dpr / 2);
         ctx.textAlign = 'start';
     }
 }
