@@ -267,14 +267,16 @@ document.addEventListener('keydown', event => {
 new ResizeObserver(() => cam.layout()).observe(document.getElementById('screen'));
 // On load, ask for camera permission and start the default camera.
 setDetail(DETAIL_LEVELS.length - 1);
-// Firefox holds the permission prompt until the page has focus, e.g. after
-// the address bar was used to open it.
-cam.stop(document.hasFocus()
-    ? '[ waiting for camera permission ]'
-    : '[ click here to enable the camera ]');
-window.addEventListener('focus', () => {
-    if (!cam.active && cam.idleMessage === '[ click here to enable the camera ]') {
-        cam.stop('[ waiting for camera permission ]');
-    }
-});
-openCamera('');
+// Firefox holds the permission prompt until the page has focus, and a
+// request made while unfocused can stay unanswered even after focus
+// arrives. So when the page opens unfocused (e.g. typed into the address
+// bar), wait for a click in the page before asking for the camera.
+const CLICK_TO_START = '[ click here to start the camera ]';
+if (document.hasFocus()) {
+    openCamera('');
+} else {
+    cam.stop(CLICK_TO_START);
+    document.addEventListener('pointerdown', () => {
+        if (!cam.active && cam.idleMessage === CLICK_TO_START) openCamera('');
+    }, { once: true });
+}

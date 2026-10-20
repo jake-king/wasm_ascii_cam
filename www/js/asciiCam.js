@@ -98,6 +98,13 @@ export class AsciiCam {
     async start(deviceId) {
         this.stop('[ starting camera... ]');
         const request = this.request;
+        // A request with no answer after a few seconds is usually an
+        // unanswered (or hidden) permission prompt.
+        setTimeout(() => {
+            if (request === this.request && !this.active) {
+                this.showMessage('[ waiting for camera permission: check the address bar ]');
+            }
+        }, 3000);
         const video = { width: { ideal: 640 } };
         if (deviceId) video.deviceId = { exact: deviceId };
 
@@ -315,6 +322,12 @@ export class AsciiCam {
         this.frameTimes.push(now);
         while (this.frameTimes[0] < now - 1000) this.frameTimes.shift();
         this.onStats?.({ fps: this.frameTimes.length, renderMs: this.renderMs });
+    }
+
+    // Change the message shown while no picture is playing.
+    showMessage(message) {
+        this.idleMessage = message;
+        if (!this.active) this.drawIdle();
     }
 
     drawIdle() {
