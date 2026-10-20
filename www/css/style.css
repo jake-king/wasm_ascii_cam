@@ -84,6 +84,18 @@ legend {
     inset: 0;
     margin: auto;
 }
+#overlay {
+    position: absolute;
+    inset: 0;
+    margin: 0;
+    display: grid;
+    place-items: center;
+    padding: 1ch;
+    text-align: center;
+    color: var(--fg);
+    font-size: 1.25em;
+}
+#overlay[hidden] { display: none; }
 
 /* Controls: label column + control column */
 .controls {
