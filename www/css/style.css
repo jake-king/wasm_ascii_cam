@@ -108,6 +108,15 @@ legend {
 .controls dt { color: var(--fg); }
 .controls dd { margin: 0; }
 
+.controls > div { display: contents; }
+.controls > div[hidden] { display: none; }
+
+input[type="range"] {
+    width: 100%;
+    margin: 0;
+    accent-color: var(--accent);
+}
+
 .choice { display: flex; flex-wrap: wrap; gap: 0 1ch; }
 .stepper { display: flex; align-items: center; gap: 1ch; }
 .stepper output { color: var(--hi); min-width: 3ch; text-align: center; }

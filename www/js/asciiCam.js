@@ -107,14 +107,8 @@ export class AsciiCam {
             throw new Superseded();
         }
         this.stream = stream;
-        this.video = document.createElement('video');
+        this.video = makeVideoElement();
         this.video.muted = true;
-        this.video.playsInline = true;
-        this.video.autoplay = true;
-        // Kept in the page (hidden): some browser extensions re-play detached
-        // video elements, which aborts our own play() call.
-        this.video.hidden = true;
-        document.body.append(this.video);
         this.video.srcObject = stream;
         try {
             await whenPlaying(this.video);
@@ -122,9 +116,98 @@ export class AsciiCam {
             throw request !== this.request ? new Superseded() : err;
         }
         if (request !== this.request) throw new Superseded();
+        this.source = 'camera';
         this.active = true;
         this.loop();
         return this.stream.getVideoTracks()[0].getSettings().deviceId;
+    }
+
+    // Play a local video file as the source, looping, with its sound. The
+    // browser reads the file through an object URL; nothing is uploaded.
+    async startFile(file) {
+        this.stop('[ opening video... ]');
+        const request = this.request;
+        this.fileUrl = URL.createObjectURL(file);
+        this.video = makeVideoElement();
+        this.video.loop = true;
+        this.video.src = this.fileUrl;
+        try {
+            await whenPlaying(this.video);
+        } catch (err) {
+            if (request !== this.request) throw new Superseded();
+            if (err.name !== 'NotAllowedError') throw err;
+            // Sound needs a user gesture in some browsers; play muted instead.
+            this.video.muted = true;
+            await whenPlaying(this.video);
+        }
+        if (request !== this.request) throw new Superseded();
+        this.source = 'file';
+        this.fileName = file.name;
+        this.active = true;
+        this.loop();
+    }
+
+    togglePause() {
+        if (this.source !== 'file') return;
+        if (this.video.paused) this.video.play(); else this.video.pause();
+    }
+
+    seek(seconds) {
+        if (this.source !== 'file') return;
+        const { duration } = this.video;
+        this.video.currentTime = Math.min(Math.max(0, seconds), Number.isFinite(duration) ? duration : 0);
+    }
+
+    playback() {
+        if (this.source !== 'file') return null;
+        const { currentTime, duration, paused } = this.video;
+        return { currentTime, duration: Number.isFinite(duration) ? duration : 0, paused };
+    }
+
+    // Plays the whole file from the start and records the rendered grid, plus
+    // the file's sound, with MediaRecorder. Runs in real time. Resolves to a
+    // WebM Blob; rejects with AbortError if `signal` is aborted.
+    async exportVideo({ onProgress, signal } = {}) {
+        if (this.source !== 'file') throw new Error('open a video file first');
+        const video = this.video;
+        const mimeType = ['video/webm;codecs=vp9,opus', 'video/webm;codecs=vp8,opus', 'video/webm']
+            .find(type => MediaRecorder.isTypeSupported(type));
+        if (!mimeType) throw new Error('this browser cannot record WebM');
+
+        const canvasStream = this.canvas.captureStream(30);
+        const fileStream = video.captureStream ? video.captureStream() : video.mozCaptureStream();
+        const tracks = [...canvasStream.getVideoTracks(), ...fileStream.getAudioTracks()];
+        const recorder = new MediaRecorder(new MediaStream(tracks), { mimeType, videoBitsPerSecond: 8e6 });
+        const chunks = [];
+        recorder.addEventListener('dataavailable', event => { if (event.data.size) chunks.push(event.data); });
+
+        video.pause();
+        video.loop = false;
+        video.currentTime = 0;
+        await new Promise(resolve => video.addEventListener('seeked', resolve, { once: true }));
+        const progress = () => onProgress?.(video.duration ? video.currentTime / video.duration : 0);
+        video.addEventListener('timeupdate', progress);
+        try {
+            recorder.start(1000);
+            await video.play();
+            await new Promise((resolve, reject) => {
+                video.addEventListener('ended', resolve, { once: true });
+                signal?.addEventListener('abort',
+                    () => reject(new DOMException('export cancelled', 'AbortError')), { once: true });
+            });
+        } finally {
+            video.removeEventListener('timeupdate', progress);
+            const stopped = new Promise(resolve => recorder.addEventListener('stop', resolve, { once: true }));
+            if (recorder.state !== 'inactive') recorder.stop();
+            await stopped;
+            canvasStream.getTracks().forEach(track => track.stop());
+            // Firefox mutes a video's speaker output while it is being captured.
+            fileStream.getTracks().forEach(track => track.stop());
+            video.loop = true;
+            if (video.paused && this.active) video.play();
+        }
+        onProgress?.(1);
+        return new Blob(chunks, { type: 'video/webm' });
     }
 
     stop(message) {
@@ -136,10 +219,16 @@ export class AsciiCam {
         if (this.stream) this.stream.getTracks().forEach(track => track.stop());
         this.stream = null;
         if (this.video) {
+            this.video.pause();
             this.video.srcObject = null;
+            this.video.removeAttribute('src');
+            this.video.load();
             this.video.remove();
         }
+        if (this.fileUrl) URL.revokeObjectURL(this.fileUrl);
+        this.fileUrl = null;
         this.video = null;
+        this.source = null;
         this.frameTimes = [];
         this.drawIdle();
     }
@@ -235,12 +324,23 @@ export class AsciiCam {
     }
 }
 
+// A hidden <video>, kept in the page: some browser extensions re-play
+// detached video elements, which aborts our own play() call.
+function makeVideoElement() {
+    const video = document.createElement('video');
+    video.playsInline = true;
+    video.autoplay = true;
+    video.hidden = true;
+    document.body.append(video);
+    return video;
+}
+
 // Resolves when the video is playing. Firefox can reject play() with
 // AbortError for a camera stream that then plays anyway (autoplay), so the
 // 'playing' event decides; give up if nothing plays within 15 seconds.
 function whenPlaying(video) {
     return new Promise((resolve, reject) => {
-        const timer = setTimeout(() => reject(new Error('the camera did not start')), 15000);
+        const timer = setTimeout(() => reject(new Error('the video did not start')), 15000);
         video.addEventListener('playing', () => { clearTimeout(timer); resolve(); }, { once: true });
         video.play().catch(err => {
             if (err.name !== 'AbortError') { clearTimeout(timer); reject(err); }

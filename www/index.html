@@ -29,6 +29,27 @@
             </select>
           </dd>
 
+          <dt>Video</dt>
+          <dd class="stepper">
+            <button id="open-video" aria-label="Open a video file">[open...]</button>
+            <input type="file" id="video-file" accept="video/*" hidden>
+          </dd>
+
+          <div class="file-only" hidden>
+            <dt>Playback</dt>
+            <dd class="stepper">
+              <button id="play-pause" aria-label="Play or pause">[||]</button>
+              <output id="position">0:00 / 0:00</output>
+            </dd>
+            <dt><label for="seek">Seek</label></dt>
+            <dd><input type="range" id="seek" min="0" max="1000" value="0"></dd>
+            <dt>Export</dt>
+            <dd class="stepper">
+              <button id="export" aria-label="Export the whole video as ASCII, WebM">[webm]</button>
+              <output id="export-status"></output>
+            </dd>
+          </div>
+
           <dt>Detail</dt>
           <dd class="choice" id="detail" role="radiogroup" aria-label="Detail"></dd>
 
@@ -60,7 +81,7 @@
             <button id="save-txt" aria-label="Save the current frame as a text file">[txt]</button>
           </dd>
         </dl>
-        <p class="note">Video stays on your device. Nothing is uploaded.</p>
+        <p class="note">Camera and video files stay on your device. Nothing is uploaded.</p>
       </fieldset>
     </main>
 
@@ -68,6 +89,7 @@
       <span class="keys">
         <kbd>1</kbd>-<kbd>3</kbd>Detail <kbd>b</kbd>/<kbd>B</kbd>Bright <kbd>c</kbd>/<kbd>C</kbd>Contrast
         <kbd>r</kbd>Reset <kbd>m</kbd>Mirror <kbd>g</kbd>Mono <kbd>s</kbd>/<kbd>t</kbd>Save
+        <kbd>o</kbd>Open <kbd>space</kbd>Pause
       </span>
       <span id="status">idle</span>
     </footer>

@@ -2,6 +2,10 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "test": "node --test"
+    "build": "npm run build:scalar && npm run build:simd",
+    "build:scalar": "wasm-pack build --release --target no-modules --no-typescript --out-dir www/pkg",
+    "build:simd": "RUSTFLAGS='-C target-feature=+simd128' wasm-pack build --release --target no-modules --no-typescript --out-dir www/pkg-simd",
+    "test": "node --test test/*.test.mjs",
+    "bench": "node bench/convert.mjs"
   }
 }
