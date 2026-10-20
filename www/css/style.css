@@ -1,85 +1,143 @@
-body{
-    background: black;
-    font-family: monospace;
-    color: white;
-    font-size: 2vmax;
+/* A curses-style text UI: black screen, box-drawn windows with inset titles,
+   inverse title and key bars, inverse highlight on the focused control. */
+
+:root {
+    --bg: #000;
+    --fg: #c0c0c0;      /* curses "white" */
+    --hi: #fff;         /* bold white */
+    --accent: #00aaaa;  /* curses cyan */
+    --font: ui-monospace, "DejaVu Sans Mono", Menlo, Consolas, monospace;
 }
 
-button{
-    color: white;
-    background-color: black;
-    border: none;
-    font-size: 2vmax;
-}
+* { box-sizing: border-box; }
 
-select{
-    color: white;
-    background-color: black;
-    border: none;
-    font-size: 2vmax;
-    font-family: monospace;
-}
+html, body { height: 100%; }
 
-#video{
-    display: none;
-}
-
-#canvas{
-    display: none;
-}
-
-.grid-wrapper{
-    display: grid;
-    grid-template-columns: 1fr 1fr 1fr;
-    grid-template-rows: auto;
-    grid-template-areas: "canvas canvas canvas";
-    align-items: center;
-    align-content: center;
-    text-align: center;
-    grid-gap: 15px;
-}
-
-.grid-wrapper div{
-    border: 1px solid white;
-    padding: 5px;
-}
-
-#ascii-canvas { 
-    grid-area: canvas; 
-    justify-content: center;
-}
-
-.wrapper{
-    margin: 0 auto;
-    display: table;
-}
-
-.tui-frame{
-    display: inline-block;
-    border: 1px solid white;
-    padding: 10px;
-    color: white;
-    margin: 10px;
-    text-align: center;
-}
-
-.tui-frame a{
-    color: white;
-    text-decoration: none;
-}
-
-.tui-title{
-    display: table;
-    border: none !important;
-    position: relative;
-    top: -20px;
-    left: 5px;
-    background-color: black;
-    padding: 0 5px;
-}
-
-.tui-title h2{
-    font-size: 2vmax;
-    font-weight: normal;
+body {
     margin: 0;
+    display: grid;
+    grid-template-rows: auto 1fr auto;
+    background: var(--bg);
+    color: var(--fg);
+    font: 16px/1.25 var(--font);
+}
+
+/* Title and key bars */
+.bar {
+    display: flex;
+    justify-content: space-between;
+    gap: 2ch;
+    padding: 0 1ch;
+    background: var(--accent);
+    color: var(--bg);
+    white-space: nowrap;
+    overflow: hidden;
+}
+.bar-title { font-weight: bold; }
+
+kbd {
+    font: inherit;
+    background: var(--bg);
+    color: var(--hi);
+    padding: 0 0.5ch;
+    margin: 0 0.5ch 0 1ch;
+}
+kbd + kbd { margin-left: 0; }
+.keys kbd:first-child { margin-left: 0; }
+
+/* Windows */
+main {
+    display: grid;
+    grid-template-columns: 1fr 40ch;
+    gap: 1ch;
+    padding: 1ch;
+    min-height: 0;
+}
+
+.window {
+    margin: 0;
+    padding: 1ch;
+    border: 1px solid var(--fg);
+    min-width: 0;
+    min-height: 0;
+}
+.window-double { border: 4px double var(--fg); }
+
+legend {
+    padding: 0 1ch;
+    color: var(--hi);
+    font-weight: bold;
+}
+
+.window-double {
+    display: flex;
+    flex-direction: column;
+}
+
+#screen {
+    position: relative;
+    flex: 1;
+    min-height: 240px;
+}
+#screen canvas {
+    position: absolute;
+    inset: 0;
+    margin: auto;
+}
+
+/* Controls: label column + control column */
+.controls {
+    display: grid;
+    grid-template-columns: 11ch 1fr;
+    gap: 1ch 1ch;
+    margin: 0;
+    align-items: center;
+}
+.controls dt { color: var(--fg); }
+.controls dd { margin: 0; }
+
+.choice { display: flex; flex-wrap: wrap; gap: 0 1ch; }
+.stepper { display: flex; align-items: center; gap: 1ch; }
+.stepper output { color: var(--hi); min-width: 3ch; text-align: center; }
+
+button, select {
+    font: inherit;
+    color: var(--hi);
+    background: var(--bg);
+    border: 0;
+    padding: 0;
+    cursor: pointer;
+}
+select {
+    width: 100%;
+    border-bottom: 1px dotted var(--fg);
+}
+option { background: var(--bg); color: var(--hi); }
+
+/* Selected detail level: inverse, like a curses menu item */
+[role="radio"] { padding: 0 0.5ch; }
+[role="radio"][aria-checked="true"] {
+    background: var(--fg);
+    color: var(--bg);
+}
+
+/* Keyboard focus: inverse cyan, the curses cursor */
+button:focus-visible, select:focus-visible {
+    outline: none;
+    background: var(--accent);
+    color: var(--bg);
+}
+button:hover { color: var(--accent); }
+[role="radio"][aria-checked="true"]:hover { color: var(--bg); }
+
+.note {
+    margin: 2em 0 0;
+    color: var(--fg);
+    opacity: 0.7;
+    font-size: 0.875em;
+}
+
+@media (max-width: 800px) {
+    main { grid-template-columns: 1fr; grid-template-rows: minmax(50vh, 1fr) auto; }
+    .keys, .bar-subtitle { display: none; }
 }

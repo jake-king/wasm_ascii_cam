@@ -1,36 +1,70 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
   <head>
     <meta charset="utf-8">
-    <title>AsciiCam</title>
     <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>AsciiCam</title>
     <link rel="icon" href="data:,">
-    <link href="css/style.css" rel="stylesheet" type="text/css">
+    <link href="css/style.css" rel="stylesheet">
   </head>
   <body>
-    <div class="grid-wrapper">
-      <div id="ascii-canvas">
-        <div class="tui-title"><h2>Output</h2></div>
-        <canvas id="ascii-cam"></canvas>
-      </div>
-      <div>
-          <div class="tui-title"><h2>Brightness</h2></div>
-        <button id="brightness-subtract">[ - ]</button>&nbsp;<span id="brightness">1.0</span>&nbsp;<button id="brightness-add">[ + ]</button>
-      </div>
-      <div>
-          <div class="tui-title"><h2>Contrast</h2></div>
-        <button id="contrast-subtract">[ - ]</button>&nbsp;<span id="contrast">1.0</span>&nbsp;<button id="contrast-add">[ + ]</button>
-      </div>
-      <div>
-          <div class="tui-title"><h2>Cameras</h2></div>
-        <select id="cameras">
-          <option value="nocam">--Select Camera--</option>
-        </select>
-      </div>
-    </div>
-    <video id="video">Video stream not available</video>
-    <canvas id="canvas"></canvas>
-    <noscript>This page contains webassembly and javascript content, please enable javascript in your browser.</noscript>
+    <header class="bar">
+      <span class="bar-title">AsciiCam</span>
+      <span class="bar-subtitle">webcam &rarr; ASCII &middot; Rust + WebAssembly</span>
+    </header>
+
+    <main>
+      <fieldset class="window window-double">
+        <legend>Output</legend>
+        <div id="screen"><canvas id="ascii-cam"></canvas></div>
+      </fieldset>
+
+      <fieldset class="window">
+        <legend>Controls</legend>
+        <dl class="controls">
+          <dt><label for="cameras">Camera</label></dt>
+          <dd>
+            <select id="cameras">
+              <option value="">-- none --</option>
+            </select>
+          </dd>
+
+          <dt>Detail</dt>
+          <dd class="choice" id="detail" role="radiogroup" aria-label="Detail"></dd>
+
+          <dt>Brightness</dt>
+          <dd class="stepper">
+            <button data-adjust="brightness" data-step="-0.1" aria-label="Less brightness">[-]</button>
+            <output id="brightness">1.0</output>
+            <button data-adjust="brightness" data-step="0.1" aria-label="More brightness">[+]</button>
+          </dd>
+
+          <dt>Contrast</dt>
+          <dd class="stepper">
+            <button data-adjust="contrast" data-step="-0.1" aria-label="Less contrast">[-]</button>
+            <output id="contrast">1.0</output>
+            <button data-adjust="contrast" data-step="0.1" aria-label="More contrast">[+]</button>
+          </dd>
+
+          <dt>Mirror</dt>
+          <dd><button class="toggle" data-toggle="mirror" aria-pressed="true">[x]</button></dd>
+
+          <dt>Mono</dt>
+          <dd><button class="toggle" data-toggle="mono" aria-pressed="false">[ ]</button></dd>
+        </dl>
+        <p class="note">Video stays on your device. Nothing is uploaded.</p>
+      </fieldset>
+    </main>
+
+    <footer class="bar">
+      <span class="keys">
+        <kbd>1</kbd>-<kbd>3</kbd>Detail <kbd>b</kbd>/<kbd>B</kbd>Bright <kbd>c</kbd>/<kbd>C</kbd>Contrast
+        <kbd>m</kbd>Mirror <kbd>g</kbd>Mono
+      </span>
+      <span id="status">idle</span>
+    </footer>
+
+    <noscript>AsciiCam needs JavaScript and WebAssembly.</noscript>
     <script type="module" src="js/script.js"></script>
   </body>
 </html>

@@ -21,6 +21,7 @@ jobs:
         with:
           tool: wasm-pack
       - run: cargo test
+      - run: node --test
       - run: wasm-pack build --release --target no-modules --no-typescript --out-dir www/pkg
       - if: github.event_name != 'pull_request'
         uses: actions/upload-pages-artifact@v5

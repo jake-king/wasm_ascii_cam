@@ -1,6 +1,6 @@
 [package]
 name = "wasm_ascii_cam"
-version = "0.2.0"
+version = "0.3.0"
 authors = ["Jake King"]
 edition = "2024"
 description = "Live webcam-to-ASCII renderer: Rust compiled to WebAssembly, run across a pool of Web Workers."
