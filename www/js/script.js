@@ -35,7 +35,7 @@ window.onload = function () {
             if(cameraSelect.value !== 'nocam'){
                 cam.init(cameraSelect.value);
             }
-        } else{
+        } else if(cameraSelect.value !== 'nocam'){
             cam.init(cameraSelect.value);
         }
     });
