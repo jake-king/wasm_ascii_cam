@@ -84,20 +84,35 @@ export class AsciiCam {
 
     // Start a camera by device id, or the default camera when the id is empty
     // (browsers hide ids until the page has camera permission).
-    // Resolves to the id of the camera actually opened.
+    // Resolves to the id of the camera actually opened. Some cameras take
+    // seconds to start; a later start() or stop() supersedes this one, which
+    // then releases its camera and rejects with Superseded.
     async start(deviceId) {
-        this.stop();
+        this.stop('[ starting camera... ]');
+        const request = this.request;
         const video = { width: { ideal: 640 } };
         if (deviceId) video.deviceId = { exact: deviceId };
-        this.stream = await navigator.mediaDevices.getUserMedia({ video, audio: false });
-        this.video.srcObject = this.stream;
-        await this.video.play();
+
+        const stream = await navigator.mediaDevices.getUserMedia({ video, audio: false });
+        if (request !== this.request) {
+            stream.getTracks().forEach(track => track.stop());
+            throw new Superseded();
+        }
+        this.stream = stream;
+        this.video.srcObject = stream;
+        try {
+            await this.video.play();
+        } catch (err) {
+            throw request !== this.request ? new Superseded() : err;
+        }
+        if (request !== this.request) throw new Superseded();
         this.active = true;
         this.loop();
         return this.stream.getVideoTracks()[0].getSettings().deviceId;
     }
 
     stop(message) {
+        this.request = (this.request ?? 0) + 1;   // cancels a start() in progress
         this.idleMessage = message ?? this.idleMessage;
         this.active = false;
         this.inFlight = null;
@@ -197,6 +212,14 @@ export class AsciiCam {
         ctx.textBaseline = 'middle';
         ctx.fillText(this.idleMessage, w / dpr / 2, h / dpr / 2);
         ctx.textAlign = 'start';
+    }
+}
+
+// A camera start that was cancelled by a newer start() or stop().
+export class Superseded extends Error {
+    constructor() {
+        super('camera start superseded');
+        this.name = 'Superseded';
     }
 }
 

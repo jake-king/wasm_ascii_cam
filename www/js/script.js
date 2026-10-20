@@ -1,5 +1,5 @@
 import { ThreadPool } from './thread.js';
-import { AsciiCam, DETAIL_LEVELS } from './asciiCam.js';
+import { AsciiCam, DETAIL_LEVELS, Superseded } from './asciiCam.js';
 
 const workers = window.navigator.hardwareConcurrency || 1;
 const pool = new ThreadPool('js/rgbToAscii.js', workers);
@@ -45,6 +45,7 @@ async function openCamera(deviceId) {
         const opened = await cam.start(deviceId);
         await listCameras(opened);
     } catch (err) {
+        if (err instanceof Superseded) return;   // a newer choice is starting
         console.error(`Could not open the camera: ${err}`);
         cameras.value = OFF;
         cam.stop(CAMERA_ERRORS[err.name] ?? `[ camera error: ${err.name || err} ]`);
