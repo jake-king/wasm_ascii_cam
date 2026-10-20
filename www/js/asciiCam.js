@@ -191,10 +191,34 @@ export class AsciiCam {
 
     render(indices) {
         const start = performance.now();
+        this.lastFrame = { indices, pixels: this.pixels, width: this.width, height: this.height };
         this.renderer.draw(indices, this.pixels, this.mono);
         this.renderMs += (performance.now() - start - this.renderMs) * 0.1;
         this.overlay.hidden = true;
         this.tickStats();
+    }
+
+    // The last frame as a PNG Blob, or null before the first frame. It is
+    // redrawn first: a WebGL canvas only holds its image until the browser
+    // displays it, so toBlob must follow a draw in the same task.
+    snapshotPng() {
+        const frame = this.lastFrame;
+        if (!frame || frame.width !== this.width) return Promise.resolve(null);
+        this.renderer.draw(frame.indices, frame.pixels, this.mono);
+        return new Promise(resolve => this.canvas.toBlob(resolve, 'image/png'));
+    }
+
+    // The last frame as plain text, one line per row, or null.
+    snapshotText() {
+        const frame = this.lastFrame;
+        if (!frame) return null;
+        const lines = [];
+        for (let row = 0; row < frame.height; row++) {
+            const start = row * frame.width;
+            lines.push(Array.from(frame.indices.subarray(start, start + frame.width),
+                i => ASCII_PALETTE[i]).join(''));
+        }
+        return lines.join('\n') + '\n';
     }
 
     tickStats() {
