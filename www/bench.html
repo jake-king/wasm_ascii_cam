@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <title>AsciiCam renderer benchmark</title>
+    <link rel="icon" href="data:,">
+    <link href="css/style.css" rel="stylesheet">
+    <style>
+      body { display: block; padding: 2ch; }
+      table { border-collapse: collapse; margin: 1em 0; }
+      td, th { border: 1px solid var(--fg); padding: 0 1ch; text-align: right; }
+      th:first-child, td:first-child { text-align: left; }
+      canvas { display: none; }
+    </style>
+  </head>
+  <body>
+    <h1>Renderer benchmark</h1>
+    <p>Draws random 160×60 frames with each renderer and waits for the drawing to finish
+       (including GPU work) after every frame. Lower is better.</p>
+    <p id="state">running...</p>
+    <table id="results"><tr><th>Renderer</th><th>Mode</th><th>ms per frame</th></tr></table>
+    <p id="gpu"></p>
+    <script type="module">
+      import { WebGlRenderer, Canvas2dRenderer } from './js/renderer.js';
+      import { ASCII_PALETTE } from './js/asciiCam.js';
+
+      const COLUMNS = 160, ROWS = 60, CELL_W = 9, CELL_H = 18, FRAMES = 120;
+      const grid = {
+        columns: COLUMNS, rows: ROWS, cellWidth: CELL_W, cellHeight: CELL_H,
+        fontSize: 15, fontFamily: 'ui-monospace, "DejaVu Sans Mono", Menlo, Consolas, monospace',
+        textTop: 1.5, palette: ASCII_PALETTE, monoColour: [0.2, 1, 0.4], monoCss: '#33ff66',
+      };
+      const frames = Array.from({ length: 8 }, () => ({
+        indices: Uint8Array.from({ length: COLUMNS * ROWS }, () => Math.random() * 64 | 0),
+        rgba: Uint8Array.from({ length: COLUMNS * ROWS * 4 }, () => Math.random() * 256 | 0),
+      }));
+
+      function makeCanvas() {
+        const canvas = document.createElement('canvas');
+        canvas.width = COLUMNS * CELL_W;
+        canvas.height = ROWS * CELL_H;
+        document.body.append(canvas);
+        return canvas;
+      }
+
+      // Block until the frame is really drawn: read one pixel back.
+      const finishers = {
+        webgl2: r => r.gl.readPixels(0, 0, 1, 1, r.gl.RGBA, r.gl.UNSIGNED_BYTE, new Uint8Array(4)),
+        canvas2d: r => r.ctx.getImageData(0, 0, 1, 1),
+      };
+
+      function time(renderer, mono) {
+        renderer.resize(grid);
+        for (let i = 0; i < 10; i++) { renderer.draw(frames[i % 8].indices, frames[i % 8].rgba, mono); finishers[renderer.name](renderer); }
+        const start = performance.now();
+        for (let i = 0; i < FRAMES; i++) {
+          renderer.draw(frames[i % 8].indices, frames[i % 8].rgba, mono);
+          finishers[renderer.name](renderer);
+        }
+        return (performance.now() - start) / FRAMES;
+      }
+
+      const results = {};
+      const renderers = [WebGlRenderer.create(makeCanvas()), new Canvas2dRenderer(makeCanvas())].filter(Boolean);
+      for (const renderer of renderers) {
+        for (const mono of [false, true]) {
+          const ms = time(renderer, mono);
+          results[`${renderer.name} ${mono ? 'mono' : 'colour'}`] = ms;
+          document.getElementById('results').insertAdjacentHTML('beforeend',
+            `<tr><td>${renderer.name}</td><td>${mono ? 'mono' : 'colour'}</td><td>${ms.toFixed(2)}</td></tr>`);
+        }
+      }
+      const gl = renderers[0].gl;
+      const info = gl && gl.getExtension('WEBGL_debug_renderer_info');
+      document.getElementById('gpu').textContent = info ? `GPU: ${gl.getParameter(info.UNMASKED_RENDERER_WEBGL)}` : '';
+      document.getElementById('state').textContent = 'done';
+      window.benchResults = results;
+    </script>
+  </body>
+</html>

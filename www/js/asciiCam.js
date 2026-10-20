@@ -1,4 +1,5 @@
 import { planChunks, splitPixels } from './chunks.js';
+import { WebGlRenderer, Canvas2dRenderer } from './renderer.js';
 
 // 64 glyphs, darkest to brightest; index = the WASM core's output.
 export const ASCII_PALETTE = ['.', '\'', '`', '^', '"', ':', ';', 'I',
@@ -18,13 +19,17 @@ export const DETAIL_LEVELS = [
 const FONT_FAMILY = 'ui-monospace, "DejaVu Sans Mono", Menlo, Consolas, monospace';
 const LINE_HEIGHT = 1.2;   // line height as a multiple of font size
 const MONO_COLOUR = '#33ff66';
+const MONO_RGB = [0x33 / 255, 0xff / 255, 0x66 / 255];
 
 export class AsciiCam {
-    constructor(pool, canvas, onStats) {
+    // renderer: 'webgl2' (default; falls back to canvas2d) or 'canvas2d'.
+    constructor(pool, canvas, overlay, onStats, renderer = 'webgl2') {
         this.pool = pool;
         this.canvas = canvas;
-        this.ctx = canvas.getContext('2d');
+        this.overlay = overlay;
         this.onStats = onStats;
+        this.renderer = (renderer === 'webgl2' && WebGlRenderer.create(canvas))
+            || new Canvas2dRenderer(canvas);
 
         this.video = null;
         this.frameCanvas = document.createElement('canvas');
@@ -41,10 +46,12 @@ export class AsciiCam {
         this.frame = 0;          // id of the newest frame sent to the workers
         this.inFlight = null;    // id of the frame being converted, or null
         this.frameTimes = [];
+        this.renderMs = 0;       // smoothed main-thread time per render()
 
         // Width of one character cell relative to its font size, for this font.
-        this.ctx.font = `100px ${FONT_FAMILY}`;
-        this.charWidth = this.ctx.measureText('M').width / 100;
+        const measure = document.createElement('canvas').getContext('2d');
+        measure.font = `100px ${FONT_FAMILY}`;
+        this.charWidth = measure.measureText('M').width / 100;
 
         this.setDetail(DETAIL_LEVELS.length - 1);
     }
@@ -60,23 +67,26 @@ export class AsciiCam {
     }
 
     // Size the output canvas to fill its container at the current grid size.
+    // Cells are a whole number of device pixels, so glyphs map 1:1 to pixels.
     layout() {
         const box = this.canvas.parentElement;
-        const fontSize = Math.max(4, Math.min(
-            box.clientWidth / (this.width * this.charWidth),
-            box.clientHeight / (this.height * LINE_HEIGHT)));
-        this.fontSize = fontSize;
-        this.cellWidth = fontSize * this.charWidth;
-        this.lineHeight = fontSize * LINE_HEIGHT;
-
-        const cssWidth = Math.floor(this.cellWidth * this.width);
-        const cssHeight = Math.floor(this.lineHeight * this.height);
         const dpr = window.devicePixelRatio || 1;
-        this.canvas.style.width = `${cssWidth}px`;
-        this.canvas.style.height = `${cssHeight}px`;
-        this.canvas.width = Math.round(cssWidth * dpr);
-        this.canvas.height = Math.round(cssHeight * dpr);
-        this.ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+        const fontSize = Math.max(4, Math.min(
+            box.clientWidth * dpr / (this.width * this.charWidth),
+            box.clientHeight * dpr / (this.height * LINE_HEIGHT)));
+        const cellWidth = Math.max(1, Math.floor(fontSize * this.charWidth));
+        const cellHeight = Math.max(1, Math.floor(fontSize * LINE_HEIGHT));
+
+        this.canvas.width = cellWidth * this.width;
+        this.canvas.height = cellHeight * this.height;
+        this.canvas.style.width = `${this.canvas.width / dpr}px`;
+        this.canvas.style.height = `${this.canvas.height / dpr}px`;
+        this.renderer.resize({
+            columns: this.width, rows: this.height, cellWidth, cellHeight,
+            fontSize, fontFamily: FONT_FAMILY, textTop: (cellHeight - fontSize) / 2,
+            palette: ASCII_PALETTE, monoColour: MONO_RGB, monoCss: MONO_COLOUR,
+        });
+        this.cellAspect = cellWidth / cellHeight;
         if (!this.active) this.drawIdle();
     }
 
@@ -148,7 +158,7 @@ export class AsciiCam {
         const vh = this.video.videoHeight;
         if (!vw || !vh) return;
 
-        const shape = (this.width * this.cellWidth) / (this.height * this.lineHeight);
+        const shape = (this.width / this.height) * this.cellAspect;
         let sx = 0, sy = 0, sw = vw, sh = vh;
         if (vw / vh > shape) { sw = vh * shape; sx = (vw - sw) / 2; }
         else { sh = vw / shape; sy = (vh - sh) / 2; }
@@ -180,24 +190,10 @@ export class AsciiCam {
     }
 
     render(indices) {
-        const ctx = this.ctx;
-        const px = this.pixels;
-        ctx.fillStyle = '#000';
-        ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
-        ctx.font = `${this.fontSize}px ${FONT_FAMILY}`;
-        ctx.textBaseline = 'top';
-        if (this.mono) ctx.fillStyle = MONO_COLOUR;
-
-        for (let row = 0, i = 0; row < this.height; row++) {
-            const y = row * this.lineHeight;
-            for (let col = 0; col < this.width; col++, i++) {
-                if (!this.mono) {
-                    const p = i * 4;
-                    ctx.fillStyle = `rgb(${px[p]},${px[p + 1]},${px[p + 2]})`;
-                }
-                ctx.fillText(ASCII_PALETTE[indices[i]], col * this.cellWidth, y);
-            }
-        }
+        const start = performance.now();
+        this.renderer.draw(indices, this.pixels, this.mono);
+        this.renderMs += (performance.now() - start - this.renderMs) * 0.1;
+        this.overlay.hidden = true;
         this.tickStats();
     }
 
@@ -205,24 +201,13 @@ export class AsciiCam {
         const now = performance.now();
         this.frameTimes.push(now);
         while (this.frameTimes[0] < now - 1000) this.frameTimes.shift();
-        this.onStats?.({ fps: this.frameTimes.length });
+        this.onStats?.({ fps: this.frameTimes.length, renderMs: this.renderMs });
     }
 
     drawIdle() {
-        const ctx = this.ctx;
-        const w = this.canvas.width, h = this.canvas.height;
-        ctx.fillStyle = '#000';
-        ctx.fillRect(0, 0, w, h);
-        const dpr = window.devicePixelRatio || 1;
-        // Largest font up to 1.4 cells that fits the message on one line.
-        const room = (w / dpr) * 0.94;
-        const fit = room / (this.idleMessage.length * this.charWidth);
-        ctx.font = `${Math.min(this.fontSize * 1.4, fit)}px ${FONT_FAMILY}`;
-        ctx.fillStyle = '#c0c0c0';
-        ctx.textAlign = 'center';
-        ctx.textBaseline = 'middle';
-        ctx.fillText(this.idleMessage, w / dpr / 2, h / dpr / 2);
-        ctx.textAlign = 'start';
+        this.renderer.clear();
+        this.overlay.textContent = this.idleMessage;
+        this.overlay.hidden = false;
     }
 }
 

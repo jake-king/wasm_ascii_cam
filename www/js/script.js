@@ -5,17 +5,22 @@ const workers = window.navigator.hardwareConcurrency || 1;
 const pool = new ThreadPool('js/rgbToAscii.js', workers);
 const status = document.getElementById('status');
 let fps = 0;
+let renderMs = 0;
 
-const cam = new AsciiCam(pool, document.getElementById('ascii-cam'), stats => {
-    fps = stats.fps;
-    showStatus();
-});
+// ?renderer=2d forces the Canvas 2D renderer, for comparison.
+const requested = new URLSearchParams(location.search).get('renderer') === '2d' ? 'canvas2d' : 'webgl2';
+const cam = new AsciiCam(pool, document.getElementById('ascii-cam'), document.getElementById('overlay'),
+    stats => {
+        ({ fps, renderMs } = stats);
+        showStatus();
+    }, requested);
 
 function showStatus() {
     const { width, height } = DETAIL_LEVELS[cam.detail];
+    const where = `${width}×${height} · ${cam.renderer.name} · ${workers} workers`;
     status.textContent = cam.active
-        ? `${fps} fps · ${width}×${height} · ${workers} workers`
-        : `idle · ${width}×${height} · ${workers} workers`;
+        ? `${fps} fps · draw ${renderMs.toFixed(2)} ms · ${where}`
+        : `idle · ${where}`;
 }
 
 // Camera menu. Until the page has camera permission, browsers hide camera
