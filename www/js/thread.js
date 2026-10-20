@@ -1,28 +1,28 @@
-export class ThreadPool{
+// A fixed pool of Web Workers. Tasks wait in a queue when every worker is busy.
+export class ThreadPool {
     constructor(script, size) {
         this.threads = [];
         this.tasks = [];
-        for (var ithread = 0; ithread < size; ithread++) {
+        for (let i = 0; i < size; i++) {
             this.threads.push(new Thread(script, this));
-            this.threads[ithread].worker.postMessage({init:'init'});
         }
+        this.size = size;
     }
 
     queueTask(message, callback) {
-        const task = {task: message, callback: callback};
+        const task = { task: message, callback };
         if (this.threads.length > 0) {
-          let thread = this.threads.shift();
-          thread.run(task);
+            this.threads.shift().run(task);
         } else {
-          this.tasks.push(task);
+            this.tasks.push(task);
         }
     }
 
     afterTask(thread) {
         if (this.tasks.length > 0) {
-          thread.run(this.tasks.shift());
+            thread.run(this.tasks.shift());
         } else {
-          this.threads.push(thread);
+            this.threads.push(thread);
         }
     }
 }
