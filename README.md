@@ -43,3 +43,7 @@ Browsers only allow camera access on `https://` or `localhost`.
 | `www/js/thread.js` | Small Web Worker thread pool |
 | `www/js/rgbToAscii.js` | Worker script that loads the WASM module |
 | `.github/workflows/pages.yml` | Tests, builds and deploys to GitHub Pages |
+
+## License
+
+[MIT](LICENSE)
