@@ -23,8 +23,11 @@ export class AsciiCam {
 
         this.settings = new VideoSettings();
         this.pool = threadPool;
-        this.totalWorkers = this.pool.threads.length;
-        this.chunkSize = Math.floor((this.width * this.height)/this.totalWorkers) * 4;
+        // Split each frame into whole-pixel chunks, at most one per worker.
+        const pixels = this.width * this.height;
+        const pixelsPerChunk = Math.ceil(pixels / this.pool.threads.length);
+        this.chunkSize = pixelsPerChunk * 4;
+        this.totalChunks = Math.ceil(pixels / pixelsPerChunk);
         this.chunks = [];
         this.finishedWorkers = 0;
     }
@@ -32,7 +35,7 @@ export class AsciiCam {
     collect(message){
         this.chunks[message.index] = message.data;
         this.finishedWorkers = this.finishedWorkers + 1;
-        if (this.finishedWorkers === this.totalWorkers){
+        if (this.finishedWorkers === this.totalChunks){
             this.data = this.concatenate(...this.chunks);
             this.chunks = [];
             this.finishedWorkers = 0;
@@ -55,18 +58,11 @@ export class AsciiCam {
     }
 
     chunkImageData(arr){
-        let chunkedImageData = [];
-        const chunks = Math.floor(arr.length/this.chunkSize);
-    
-        for(let i = 0; i < chunks; i++){
-            chunkedImageData[i] = arr.slice(i*this.chunkSize, (i*this.chunkSize)+this.chunkSize);
+        const chunks = [];
+        for (let start = 0; start < arr.length; start += this.chunkSize) {
+            chunks.push(arr.slice(start, start + this.chunkSize));
         }
-    
-        if( arr.length % this.chunkSize !== 0 ){
-            chunkedImageData[chunks] = arr.slice(chunks, arr.length-1);
-        }
-    
-        return chunkedImageData;
+        return chunks;
     }
 
     init(deviceId){
@@ -78,7 +74,7 @@ export class AsciiCam {
             this.video.play();
         })
         .catch((err) => {
-            console.log("An error occured: " + err);
+            console.error("Could not open the camera: " + err);
         });
 
         this.video.addEventListener('canplay', ()=>{
@@ -90,7 +86,7 @@ export class AsciiCam {
             this.ctx.imageSmoothingEnabled = false;
             this.active = true;
             this.animationRequest = window.requestAnimationFrame(this.tick.bind(this));
-        }, false);
+        }, {once: true});
     }
 
     tick(){

@@ -1,7 +1,7 @@
 class RgbToAscii {
   constructor(){
-    self.importScripts('./wasm_ascii_cam.js');
-    this.instance = wasm_bindgen('./wasm_ascii_cam_bg.wasm');
+    self.importScripts('../pkg/wasm_ascii_cam.js');
+    this.instance = wasm_bindgen({module_or_path: '../pkg/wasm_ascii_cam_bg.wasm'});
   }
 
   render(data){

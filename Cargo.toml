@@ -1,24 +1,18 @@
 [package]
 name = "wasm_ascii_cam"
-version = "0.1.0"
-authors = ["Jake King <jake.w.king@gmail.com>"]
-edition = "2018"
-
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+version = "0.2.0"
+authors = ["Jake King"]
+edition = "2024"
+description = "Live webcam-to-ASCII renderer: Rust compiled to WebAssembly, run across a pool of Web Workers."
+repository = "https://github.com/jake-king/wasm_ascii_cam"
+license = "MIT"
 
 [lib]
-crate-type =["cdylib"]
+crate-type = ["cdylib", "rlib"]
 
 [dependencies]
-wasm-bindgen = "0.2.55"
-
-# `wee_alloc` is a tiny allocator for wasm that is only ~1K in code size
-# compared to the default allocator's ~10K. It is slower than the default
-# allocator, however.
-#
-# Unfortunately, `wee_alloc` requires nightly Rust when targeting wasm for now.
-wee_alloc = { version = "0.4.2", optional = true }
+wasm-bindgen = "0.2"
 
 [profile.release]
-# Tell `rustc` to optimize for small code size.
 opt-level = "s"
+lto = true

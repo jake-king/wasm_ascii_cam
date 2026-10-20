@@ -36,13 +36,14 @@ export class Thread {
     }
 
     run(task) {
+        this.callback = task.callback;
         this.worker.postMessage(task.task);
-        this.constructor = task.callback;
     }
 
     onmessage(message) {
-        this.constructor.collect(message.data);
+        const callback = this.callback;
         this.callback = null;
+        callback.collect(message.data);
         this.pool.afterTask(this);
     }
 }
