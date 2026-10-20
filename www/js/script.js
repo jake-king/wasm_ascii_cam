@@ -113,6 +113,36 @@ document.querySelectorAll('[data-toggle]').forEach(button => {
     button.addEventListener('click', () => toggle(button.dataset.toggle));
 });
 
+// Snapshots: download the current frame as PNG or text.
+function download(blob, extension) {
+    const now = new Date();
+    const pad = n => String(n).padStart(2, '0');
+    const stamp = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}-`
+        + `${pad(now.getHours())}${pad(now.getMinutes())}${pad(now.getSeconds())}`;
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = `asciicam-${stamp}.${extension}`;
+    link.click();
+    setTimeout(() => URL.revokeObjectURL(link.href), 1000);
+}
+
+function nothingToSave() {
+    status.textContent = 'nothing to save yet: start a camera first';
+}
+
+async function savePng() {
+    const blob = await cam.snapshotPng();
+    if (blob) download(blob, 'png'); else nothingToSave();
+}
+
+function saveText() {
+    const text = cam.snapshotText();
+    if (text) download(new Blob([text], { type: 'text/plain' }), 'txt'); else nothingToSave();
+}
+
+document.getElementById('save-png').addEventListener('click', savePng);
+document.getElementById('save-txt').addEventListener('click', saveText);
+
 // Keyboard shortcuts, as listed in the footer.
 const KEYS = {
     '1': () => setDetail(0), '2': () => setDetail(1), '3': () => setDetail(2),
@@ -120,6 +150,7 @@ const KEYS = {
     'c': () => adjust('contrast', -0.1), 'C': () => adjust('contrast', 0.1),
     'r': () => { reset('brightness'); reset('contrast'); },
     'm': () => toggle('mirror'), 'g': () => toggle('mono'),
+    's': savePng, 't': saveText,
 };
 
 document.addEventListener('keydown', event => {

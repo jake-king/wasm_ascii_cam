@@ -52,6 +52,7 @@ Intel i5-12600KF, NVIDIA RTX 5060 Ti, Linux. At 60 fps a frame has 16.7 ms, so C
 | `r` | Reset brightness and contrast |
 | `m` | Mirror on/off |
 | `g` | Mono (green) on/off |
+| `s` / `t` | Save the current frame as PNG / text |
 
 ## Build and run
 
