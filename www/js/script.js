@@ -7,6 +7,12 @@ const status = document.getElementById('status');
 let fps = 0;
 let renderMs = 0;
 
+// The workers use the SIMD build when the browser can compile it.
+let instructionSet = 'wasm';
+fetch('pkg-simd/wasm_ascii_cam_bg.wasm')
+    .then(response => response.arrayBuffer())
+    .then(bytes => { instructionSet = WebAssembly.validate(bytes) ? 'simd' : 'scalar'; showStatus(); });
+
 // ?renderer=2d forces the Canvas 2D renderer, for comparison.
 const requested = new URLSearchParams(location.search).get('renderer') === '2d' ? 'canvas2d' : 'webgl2';
 const cam = new AsciiCam(pool, document.getElementById('ascii-cam'), document.getElementById('overlay'),
@@ -17,9 +23,9 @@ const cam = new AsciiCam(pool, document.getElementById('ascii-cam'), document.ge
 
 function showStatus() {
     const { width, height } = DETAIL_LEVELS[cam.detail];
-    const where = `${width}×${height} · ${cam.renderer.name} · ${workers} workers`;
+    const where = `${width}×${height} · ${cam.renderer.name} · ${instructionSet} · ${workers} workers`;
     status.textContent = cam.active
-        ? `${fps} fps · draw ${renderMs.toFixed(2)} ms · ${where}`
+        ? `${cam.source === 'file' ? 'video' : 'camera'} · ${fps} fps · draw ${renderMs.toFixed(2)} ms · ${where}`
         : `idle · ${where}`;
 }
 
@@ -47,6 +53,9 @@ const CAMERA_ERRORS = {
 
 async function openCamera(deviceId) {
     try {
+        exporting?.abort();
+        showFileControls(false);
+        setToggle('mirror', true);
         const opened = await cam.start(deviceId);
         await listCameras(opened);
     } catch (err) {
@@ -102,11 +111,15 @@ document.querySelectorAll('[data-reset]').forEach(button => {
 });
 
 // Mirror and mono toggles.
-function toggle(setting) {
-    cam[setting] = !cam[setting];
+function setToggle(setting, on) {
+    cam[setting] = on;
     const button = document.querySelector(`[data-toggle="${setting}"]`);
-    button.setAttribute('aria-pressed', String(cam[setting]));
-    button.textContent = cam[setting] ? '[x]' : '[ ]';
+    button.setAttribute('aria-pressed', String(on));
+    button.textContent = on ? '[x]' : '[ ]';
+}
+
+function toggle(setting) {
+    setToggle(setting, !cam[setting]);
 }
 
 document.querySelectorAll('[data-toggle]').forEach(button => {
@@ -143,6 +156,90 @@ function saveText() {
 document.getElementById('save-png').addEventListener('click', savePng);
 document.getElementById('save-txt').addEventListener('click', saveText);
 
+// Video files: play as the source, seek, and export the whole clip.
+const fileInput = document.getElementById('video-file');
+const fileControls = document.querySelector('.file-only');
+const playPause = document.getElementById('play-pause');
+const position = document.getElementById('position');
+const seekBar = document.getElementById('seek');
+const exportButton = document.getElementById('export');
+const exportStatus = document.getElementById('export-status');
+let exporting = null;   // AbortController while an export runs
+
+function showFileControls(visible) {
+    fileControls.hidden = !visible;
+}
+
+document.getElementById('open-video').addEventListener('click', () => fileInput.click());
+
+fileInput.addEventListener('change', async () => {
+    const [file] = fileInput.files;
+    fileInput.value = '';
+    if (!file) return;
+    exporting?.abort();
+    cameras.value = OFF;
+    try {
+        await cam.startFile(file);
+        setToggle('mirror', false);
+        showFileControls(true);
+    } catch (err) {
+        if (err instanceof Superseded) return;
+        console.error(`Could not play the video: ${err}`);
+        cam.stop(`[ cannot play ${file.name}: ${err.message || err.name} ]`);
+        showFileControls(false);
+    }
+    showStatus();
+});
+
+function clock(seconds) {
+    const s = Math.floor(seconds);
+    return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
+}
+
+let seeking = false;
+seekBar.addEventListener('pointerdown', () => { seeking = true; });
+seekBar.addEventListener('change', () => { seeking = false; });
+seekBar.addEventListener('input', () => {
+    const state = cam.playback();
+    if (state) cam.seek(seekBar.value / 1000 * state.duration);
+});
+
+playPause.addEventListener('click', () => cam.togglePause());
+
+// Keep the playback row current.
+setInterval(() => {
+    const state = cam.playback();
+    if (!state) return;
+    playPause.textContent = state.paused ? '[>]' : '[||]';
+    position.textContent = `${clock(state.currentTime)} / ${clock(state.duration)}`;
+    if (!seeking && state.duration) seekBar.value = Math.round(state.currentTime / state.duration * 1000);
+}, 200);
+
+exportButton.addEventListener('click', async () => {
+    if (exporting) {
+        exporting.abort();
+        return;
+    }
+    exporting = new AbortController();
+    exportButton.textContent = '[cancel]';
+    seekBar.disabled = playPause.disabled = true;
+    try {
+        const blob = await cam.exportVideo({
+            signal: exporting.signal,
+            onProgress: fraction => { exportStatus.textContent = `recording ${Math.round(fraction * 100)}%`; },
+        });
+        download(blob, 'webm');
+        exportStatus.textContent = 'saved';
+    } catch (err) {
+        exportStatus.textContent = err.name === 'AbortError' ? 'cancelled' : `failed: ${err.message || err}`;
+        if (err.name !== 'AbortError') console.error(`Export failed: ${err}`);
+    } finally {
+        exporting = null;
+        exportButton.textContent = '[webm]';
+        seekBar.disabled = playPause.disabled = false;
+    }
+});
+
 // Keyboard shortcuts, as listed in the footer.
 const KEYS = {
     '1': () => setDetail(0), '2': () => setDetail(1), '3': () => setDetail(2),
@@ -151,11 +248,15 @@ const KEYS = {
     'r': () => { reset('brightness'); reset('contrast'); },
     'm': () => toggle('mirror'), 'g': () => toggle('mono'),
     's': savePng, 't': saveText,
+    'o': () => fileInput.click(),
+    ' ': () => { if (!exporting) cam.togglePause(); },
+    'ArrowLeft': () => { if (!exporting) cam.seek((cam.playback()?.currentTime ?? 0) - 5); },
+    'ArrowRight': () => { if (!exporting) cam.seek((cam.playback()?.currentTime ?? 0) + 5); },
 };
 
 document.addEventListener('keydown', event => {
     if (event.ctrlKey || event.metaKey || event.altKey) return;
-    if (event.target instanceof HTMLSelectElement) return;
+    if (event.target instanceof HTMLSelectElement || event.target instanceof HTMLInputElement) return;
     const action = KEYS[event.key];
     if (action) {
         event.preventDefault();
@@ -166,14 +267,16 @@ document.addEventListener('keydown', event => {
 new ResizeObserver(() => cam.layout()).observe(document.getElementById('screen'));
 // On load, ask for camera permission and start the default camera.
 setDetail(DETAIL_LEVELS.length - 1);
-// Firefox holds the permission prompt until the page has focus, e.g. after
-// the address bar was used to open it.
-cam.stop(document.hasFocus()
-    ? '[ waiting for camera permission ]'
-    : '[ click here to enable the camera ]');
-window.addEventListener('focus', () => {
-    if (!cam.active && cam.idleMessage === '[ click here to enable the camera ]') {
-        cam.stop('[ waiting for camera permission ]');
-    }
-});
-openCamera('');
+// Firefox holds the permission prompt until the page has focus, and a
+// request made while unfocused can stay unanswered even after focus
+// arrives. So when the page opens unfocused (e.g. typed into the address
+// bar), wait for a click in the page before asking for the camera.
+const CLICK_TO_START = '[ click here to start the camera ]';
+if (document.hasFocus()) {
+    openCamera('');
+} else {
+    cam.stop(CLICK_TO_START);
+    document.addEventListener('pointerdown', () => {
+        if (!cam.active && cam.idleMessage === CLICK_TO_START) openCamera('');
+    }, { once: true });
+}

@@ -2,6 +2,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { planChunks, splitPixels } from '../www/js/chunks.js';
+import { assertSameBytes } from './bytes.mjs';
 
 const SIZES = [80 * 30, 120 * 45, 160 * 60];
 
@@ -16,7 +17,7 @@ test('every pixel lands in exactly one whole-pixel chunk, for 1-64 workers', () 
             assert.equal(chunks.length, plan.count, where);
             assert.ok(plan.count <= workers, `more chunks than workers: ${where}`);
             assert.ok(chunks.every(c => c.length % 4 === 0), `partial pixel: ${where}`);
-            assert.deepEqual(Uint8Array.from(chunks.flatMap(c => [...c])), rgba, where);
+            assertSameBytes(Uint8Array.from(chunks.flatMap(c => [...c])), rgba, where);
         }
     }
 });
